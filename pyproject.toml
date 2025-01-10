@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "bank-app"
+version = "0.1.0"
+description = ""
+authors = ["Sergey Korobeynikov <skoro@smn35.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[tool.poetry.group.lint.dependencies]
+flake8 = "^7.1.1"
+mypy = "^1.14.1"
+black = "^24.10.0"
+isort = "^5.13.2"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+disallow_untyped_defs = true
+warn_return_any = true
+
+[tool.black]
+line-length = 119
+
+[tool.isort]
+line_length = 119
