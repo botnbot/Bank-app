@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 import pandas as pd
 from pandas import DataFrame
@@ -41,8 +42,13 @@ def filter_dataframe(df: DataFrame, colname: dict, operator: str = "AND") -> pd.
     conditions = []
     for key, condition in colname.items():
         if callable(condition):
+            # Если передана функция, применяем её
             conditions.append(condition(df[key]))
+        elif isinstance(condition, re.Pattern):
+            # Если передано регулярное выражение, применяем его
+            conditions.append(df[key].apply(lambda x: bool(condition.match(str(x)))))
         else:
+            # Если передано значение, проверяем равенство
             conditions.append(df[key] == condition)
     combined_conditions = conditions[0]
     for condition in conditions[1:]:
