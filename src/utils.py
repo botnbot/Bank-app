@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 import pandas as pd
 from pandas import DataFrame
@@ -23,12 +24,13 @@ def get_data(path: str) -> pd.DataFrame:
     return df
 
 
-def filter_dataframe(df: DataFrame, colname: dict, operator: str = "AND") -> pd.DataFrame:
+def filter_dataframe(df: DataFrame, filtr_conditions: dict, operator: str = "AND") -> pd.DataFrame:
     """
     Функция принимает датафрейм с транзакциями, и фильтрует его по заданным условиям
     Args:
         df (DataFrame): Исходный DataFrame.
-        colname (dict): Словарь фильтров, где ключи — названия колонок, а значения — значения или функции фильтрации.
+        filtr_conditions (dict): Словарь фильтров, где ключи — названия колонок, а значения — значения или функции
+         фильтрации.
         operator (str): 'AND' или 'OR', как объединять условия.
 
     Returns:
@@ -39,10 +41,15 @@ def filter_dataframe(df: DataFrame, colname: dict, operator: str = "AND") -> pd.
         raise ValueError("Условие должно быть AND или OR")
 
     conditions = []
-    for key, condition in colname.items():
+    for key, condition in filtr_conditions.items():
         if callable(condition):
+            # Если передана функция, применяем её
             conditions.append(condition(df[key]))
+        elif isinstance(condition, re.Pattern):
+            # Если передано регулярное выражение, применяем его
+            conditions.append(df[key].apply(lambda x: bool(condition.match(str(x)))))
         else:
+            # Если передано значение, проверяем равенство
             conditions.append(df[key] == condition)
     combined_conditions = conditions[0]
     for condition in conditions[1:]:
