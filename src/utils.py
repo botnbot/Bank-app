@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import re
 
@@ -65,15 +66,7 @@ def filter_dataframe(df: DataFrame, filtr_conditions: dict, operator: str = "AND
 
 
 if __name__ == "__main__":
-    print(greetings())
-
-    df = get_data("data/operations.xlsx")
+    df = get_data("data\\operations.xlsx")
+    print(df.head())
     example_df = df.iloc[:10]
-
-    colname = {
-        "Валюта операции" : "CNY",
-        "Статус" : "OK",
-        "Сумма операции" : lambda x: x < 0
-    }
-
-    print(filter_dataframe(df, colname, "AND"))
+    print(example_df)

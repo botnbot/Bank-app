@@ -29,5 +29,5 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
 
 
 if __name__ == "__main__":
-    input_date = input('Введите дату в формате ДД.ММ.ГГГГ. В базе данные с 01.01.2018 по 31.12.2021')
+    input_date = input('Введите дату в формате ДД.ММ.ГГГГ. В базе имеются данные с 01.01.2018 по 31.12.2021')
     print(get_report_by_category("data/operations.xlsx", "Супермаркеты", input_date))
