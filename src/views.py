@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Union
+from typing import Any, Union
 
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from src.utils import filter_dataframe, get_data
 
@@ -25,11 +25,11 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
 
     if not isinstance(current_date, datetime):
         raise ValueError(
-            "Аргумент (current_date) должен быть строкой" f" в формате 'дд.мм.гггг чч:мм:сс' или объектом datetime"
+            "Аргумент (current_date) должен быть строкой в формате 'дд.мм.гггг чч:мм:сс' или объектом datetime"
         )
 
     # Преобразуем столбец "Дата операции" в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce")
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
     # Извлекаем текущий месяц и год
     current_month = current_date.month
@@ -43,20 +43,49 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
     return current_month_df
 
 
-def sum_by_category(df:DataFrame) -> DataFrame:
+def sum_by_category(df: DataFrame) -> Series[float]:
     """Функция возвращает суммы расходов по категориям"""
-    result = df.groupby("Категория", as_index=False, dropna=True )["Сумма операции"].sum()
+    result = df.groupby("Категория", as_index=False, dropna=True)["Сумма операции"].sum()
     return result
 
 
-def cashback_sum(df:DataFrame) -> DataFrame:
-    """Функция возвращает сумму  кэшбека"""
-    result = df.groupby("Номер карты", as_index=False, dropna=True )["Сумма операции"].sum()
+def get_total_spending(df: DataFrame) -> Any:
+    """Функция возвращает сумму всех трат"""
+    result = df["Сумма операции с округлением"].sum()
     return result
+
+
+def get_cashback_sum(df: DataFrame) -> Any:
+    """Функция возвращает сумму кэшбека"""
+    result = df["Кэшбэк"].sum()
+    return result
+
+
+def get_top_5(df: DataFrame) -> DataFrame:
+    """Функция возвращает Топ-5 по сумме транзакций"""
+    df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
+    return df_top_five[["Дата операции", "Сумма операции с округлением", "Категория", "Описание"]].head(5)
+
 
 if __name__ == "__main__":
+    # Полный DataFrame
     df = get_data("data/operations.xlsx")
-    # print(df.head())
-    # print(get_operations_for_current_month(df, "09.04.2020 15:22:13"))
-    print(sum_by_category(df))
-    print(sum_by_category(df).shape)
+
+    # DataFrame со всеми операциями за текущий месяц (от переданной даты)
+    df_current_month = get_operations_for_current_month(df, "09.04.2020 15:22:13")
+
+    # DataFrame с тратами по категориям за текущий месяц (от переданной даты)
+    spending_by_category = sum_by_category(df_current_month)
+
+    # Сумма всех операций за текущий месяц
+    total_spent = get_total_spending(df_current_month)
+    print(f"Сумма всех операций за текущий месяц {total_spent}")
+
+    # Кэшбек за текущий месяц
+    cashback = get_cashback_sum(df_current_month)
+    print(f"Кэшбек за текущий месяц {cashback}")
+
+    # Топ-5 транзакций за текущий месяц
+    top_five = get_top_5(df_current_month)
+    print("Топ-5 транзакций за текущий месяц")
+    print(top_five)
