@@ -43,7 +43,15 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
     return current_month_df
 
 
+def sum_by_category(df:DataFrame) -> DataFrame:
+    """Функция возвращает суммы расходов по категориям"""
+    result = df.groupby("Номер карты", as_index=False, dropna=True )["Сумма операции"].sum()
+    return result
+
+
 if __name__ == "__main__":
     df = get_data("data/operations.xlsx")
-    print(df.head())
-    print(get_operations_for_current_month(df, "09.04.2020 15:22:13"))
+    # print(df.head())
+    # print(get_operations_for_current_month(df, "09.04.2020 15:22:13"))
+    print(sum_by_category(df))
+    print(sum_by_category(df).shape)
