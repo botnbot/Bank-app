@@ -64,9 +64,10 @@ def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
 
     # Пересчет курсов валют в рубли
     rates_in_rub = {
-        currency: (rub_rate / rate if isinstance(rate, (int, float)) else "N/A") for currency, rate in rates.items()
+        currency: (round(rub_rate / rate, 2) if isinstance(rate, (int, float)) else "N/A")
+        for currency, rate in rates.items()
+        if currency != base_currency  # Исключаем базовую валюту
     }
-    rates_in_rub[base_currency] = 1.0  # RUB к RUB всегда 1.0
 
     return rates_in_rub
 
