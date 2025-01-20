@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import pandas as pd
 from pandas import DataFrame, Series
 
-from src.external_api import get_stock_prices, get_exchange_rates, convert_to_rub
+from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 from src.utils import filter_dataframe, get_data, greetings
 
 
