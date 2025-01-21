@@ -22,13 +22,15 @@ def get_stock_prices(symbols: tuple) -> dict:
             prices[symbol] = quote["c"]
 
         except finnhub.exceptions.FinnhubAPIException as e:
-            prices[symbol] = f"Ошибка API {e}"
+            error_message = e.response.json() if hasattr(e.response, "json") else str(e)
+            prices[symbol] = f"Ошибка API {error_message}"
         except ValueError as e:
-            prices[symbol] = f"Ошибка {e}"
+            prices[symbol] = f"Ошибка API {e}"
         except Exception as e:
             prices[symbol] = f"Неизвестная ошибка: {e}"
 
     return prices
+
 
 
 def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
