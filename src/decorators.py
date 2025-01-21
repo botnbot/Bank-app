@@ -2,12 +2,12 @@ import inspect
 import os
 import time
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from config import ROOT_PATH
 
 
-def save_to_file(file_name: Optional[str] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def save_to_file(file_name: Optional[Union[str, int, None]] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Декоратор, который записывает в файл результат, возвращаемый функцией.
     Файл находится по пути data/output/, имя файла состоит из названия модуля,
