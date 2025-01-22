@@ -1,12 +1,15 @@
+import os
 from typing import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
+import requests
 # type: ignore
 from finnhub.exceptions import FinnhubAPIException  # type: ignore
 
-from src.external_api import get_stock_prices
+from src.external_api import get_exchange_rates, get_stock_prices
+
+
 
 
 @pytest.fixture
@@ -16,8 +19,14 @@ def mock_finnhub_client() -> Generator:
         yield mock_client
 
 
+@pytest.fixture(autouse=True)
+def set_env_variables(monkeypatch):
+    """Фикстура для задания переменной окружения API_KEY."""
+    monkeypatch.setenv("API_KEY", "test_api_key")
+
+
 def test_get_stock_prices_success(mock_finnhub_client: Mock) -> None:
-    """Тест успешного получения цен."""
+    """Тест успешного получения цен акций."""
     mock_instance = MagicMock()
     mock_instance.quote.side_effect = [
         {"c": 150.00},  # Ответ для AAPL
@@ -80,3 +89,85 @@ def test_get_stock_prices_unknown_exception(mock_finnhub_client: Mock) -> None:
 
     result = get_stock_prices(("AAPL",))
     assert result == {"AAPL": "Неизвестная ошибка: Unexpected type error"}
+
+
+@patch("requests.get")
+def test_get_exchange_rates_success(mock_get) ->None:
+    """Тест успешного получения обменных курсов """
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": True,
+        "rates": {"RUB": 75.0, "USD": 1.1}
+    }
+    mock_get.return_value = mock_response
+
+    result = get_exchange_rates(("USD",))
+    assert result == {"USD": 1.1, "RUB": 75.0}
+    mock_get.assert_called_once_with(
+        "https://data.fixer.io/api/latest?access_key=test_api_key",
+        params={"base": "EUR", "symbols": "USD,RUB"}
+    )
+
+
+def test_get_exchange_rates_missing_api_key():
+    """Тест исключения при отсутствии API-ключа."""
+    # Подменяем os.getenv с помощью patch
+    with patch("os.getenv", lambda key: None if key == "API_KEY" else os.getenv(key)):
+        # Проверяем, что os.getenv возвращает None для API_KEY
+        assert os.getenv("API_KEY") is None
+
+        # Ожидаем, что функция выбросит ValueError
+        with pytest.raises(ValueError, match="API-ключ не найден"):
+            get_exchange_rates(("USD",))
+
+
+@patch("requests.get")
+def test_get_exchange_rates_wrong_api_key(mock_get, monkeypatch):
+    """Тест исключения при неверном API-ключе."""
+    monkeypatch.setenv("API_KEY", "")  # Устанавливаем API_KEY как пустую строку
+
+    with pytest.raises(ValueError, match="API-ключ не найден"):
+        get_exchange_rates(("USD",))
+
+
+@patch("requests.get")
+def test_get_exchange_rates_api_error(mock_get):
+    """Тест  ошибки получения ключа API."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": False,
+        "error": {"info": "Invalid API key."}
+    }
+    mock_get.return_value = mock_response
+
+    with pytest.raises(ValueError, match="Ошибка API: Invalid API key."):
+        get_exchange_rates(("USD",))
+
+@patch("requests.get")
+def test_get_exchange_rates_missing_rub(mock_get):
+    """Тест отсутствия курса RUB в запросе."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": True,
+        "rates": {"RUB": 75.0, "USD": 1.1}
+    }
+    mock_get.return_value = mock_response
+
+    result = get_exchange_rates(("USD",))
+    assert "RUB" in result
+    assert result["RUB"] == 75.0
+
+@patch("requests.get")
+def test_get_exchange_rates_missing_currency_code(mock_get):
+    """Тест запроса курса несуществующей валюты."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": True,
+        "rates": {"RUB": 75.0}
+    }
+    mock_get.return_value = mock_response
+
+    result = get_exchange_rates(("USD",))
+    assert result == {"USD": "N/A", "RUB": 75.0}
+
+
