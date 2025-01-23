@@ -114,9 +114,10 @@ def main(date: Optional[str]) -> str:
 
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
+    total_spent_df["last_digits"] = total_spent_df["Номер карты"].astype(str).str[-4:]
     cards = total_spent_df.rename(
-        columns={"Номер карты": "last_digits", "Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"}
-    ).to_dict(orient="records")
+        columns={"Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"}
+    )[["last_digits", "total_spent", "cashback"]].to_dict(orient="records")
 
     # Топ-5 транзакций
     top_five = get_top_5(df_current_month)
