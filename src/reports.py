@@ -11,7 +11,7 @@ from src.decorators import save_to_file
 from src.utils import filter_dataframe, get_data
 
 @save_to_file()
-def get_report_by_category(data_path: str, category: str, optional_date: Optional[str] = None) -> DataFrame:
+def get_report_by_category(data_path: str, category: str, optional_date: Optional[str] = None) -> str:
     """Функция возвращает траты по заданной категории за последние 3 месяца (от переданной даты).
      Args:
         data_path (str): путь к исходному DataFrame.
