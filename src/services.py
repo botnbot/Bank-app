@@ -1,5 +1,6 @@
 import os.path
 import re
+from typing import Optional
 
 from pandas import DataFrame
 
@@ -22,7 +23,18 @@ def find_money_transfers_from_individuals(data_path: str) -> str:
 
 
 if __name__ == "__main__":
-    data_path = os.path.join(ROOT_PATH, 'data', 'operations.xlsx')
-    # print(data_path)
-    transfers_from_individuals = find_money_transfers_from_individuals(data_path)
-    print(transfers_from_individuals)
+    while True:
+        try:
+            date: Optional[str] = input(
+                "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS"
+                " в диапазоне с 2018-01-01 по 2021-12-31,"
+                " или нажмите Enter для использования текущей даты: "
+            ).strip()
+            if not date:  # Пустой ввод — текущая дата
+                date = None
+            path = os.path.join(ROOT_PATH, 'data', 'operations.xlsx')
+            print(find_money_transfers_from_individuals(path))
+            break
+        except ValueError as e:
+            print(e)
+
