@@ -25,10 +25,16 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
         date = datetime.strptime(optional_date, "%Y-%m-%d %H:%M:%S")
     old_date = date - relativedelta(months=3)
     df = get_data(data_path)
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
-    df = df[(df["Дата операции"] >= old_date) & (df["Дата операции"] <= date)]
+    df["Дата операции временная"] = pd.to_datetime(df["Дата операции"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
+
+    # Фильтруем DataFrame по дате за последние 3 месяца
+    df = df[(df["Дата операции временная"] >= old_date) & (df["Дата операции временная"] <= date)]
+    df = df.drop(columns = ["Дата операции временная"])
+
+    # Фильтруем DataFrame по переданной категории
     filter_conditions = {"Категория": category}
     result = filter_dataframe(df, filter_conditions)
+
     return result.to_json(orient='records', force_ascii=False)
 
 if __name__ == "__main__":
