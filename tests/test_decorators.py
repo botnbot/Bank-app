@@ -12,16 +12,17 @@ from src.decorators import save_to_file
 @pytest.fixture(autouse=True)
 def cleanup() -> Generator:
     """Очистка временных данных после каждого теста."""
-    if os.path.exists(os.path.join(ROOT_PATH, "data", "output", "temp")):
+    output_dir = os.path.join(ROOT_PATH, "data", "output")
+    if os.path.exists(output_dir):
         try:
-            shutil.rmtree(os.path.join(ROOT_PATH, "data", "output", "temp"))
+            shutil.rmtree(output_dir)
         except Exception as e:
-            print(f"Ошибка при удалении временных файлов теста {e}")
+            print(f"Ошибка при удалении временных файлов теста: {e}")
     yield
 
 
 def test_save_to_file_creates_file() -> None:
-    """Тест: проверяем создание файла."""
+    """Тест: проверяем создание файла с заданным именем."""
     test_file = "test_output.json"
 
     @save_to_file(file_name=test_file)
@@ -46,10 +47,13 @@ def test_save_to_file_generates_default_name() -> None:
     def sample_function() -> str:
         return "default_name_test"
 
+    # Подменяем временную метку для предсказуемого результата
     with patch("time.strftime", return_value="20250101_120000"):
         result = sample_function()
 
-    generated_file_name = os.path.join(ROOT_PATH, "data", "output", "tests.test_decorators_20250101_120000.json")
+    # Имя файла должно основываться на имени модуля, где определена функция
+    module_name = "test_decorators"
+    generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
     assert os.path.exists(generated_file_name), "Файл с именем по умолчанию не был создан."
 
     with open(generated_file_name, "r", encoding="utf-8") as f:
@@ -90,3 +94,25 @@ def test_save_to_file_handles_exceptions() -> None:
 
     with pytest.raises(RuntimeError, match="Ошибка в функции или при сохранении файла"):
         sample_function()
+
+
+def test_save_to_file_from_different_module() -> None:
+    """Тест: проверяем имя файла для функции из другого модуля."""
+
+    @save_to_file()
+    def external_function() -> str:
+        return "external_module_test"
+
+    # Подменяем временную метку
+    with patch("time.strftime", return_value="20250101_120000"):
+        result = external_function()
+
+    # Имя файла должно быть связано с текущим модулем, где определена функция
+    module_name = "test_decorators"
+    generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+    assert os.path.exists(generated_file_name), "Файл с именем функции из другого модуля не был создан."
+
+    with open(generated_file_name, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert content == str(result), "Содержимое файла не совпадает с ожидаемым."
+    os.remove(generated_file_name)
