@@ -1,35 +1,28 @@
-import inspect
 import os
 import time
 from functools import wraps
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from config import ROOT_PATH
 
 
-def save_to_file(file_name: Optional[Union[str, int, None]] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Декоратор, который записывает в файл результат, возвращаемый функцией.
-    Файл находится по пути data/output/, имя файла состоит из имени модуля,
-    в котором находится декорируемая функция, и времени создания файла.
+    Имя файла состоит из имени модуля, где определена декорируемая функция, и времени создания файла.
     """
 
     def generate_file_name(func: Callable[..., Any]) -> str:
-        """Генерирует имя файла на основе имени модуля с декорируемой функцией и текущего времени."""
-        # Извлекаем стек вызовов
-        stack = inspect.stack()
+        """
+        Генерирует имя файла на основе модуля, где определена декорируемая функция, и текущего времени.
+        """
+        # Получаем путь к исходному файлу, где функция была определена
+        func_file_path = func.__code__.co_filename
 
-        # Поиск вызова функции, где она определена
-        for frame in stack:
-            # Пропускаем текущий модуль (decorators.py)
-            if frame.filename != __file__:
-                module_name = os.path.splitext(os.path.basename(frame.filename))[0]
-                break
-        else:
-            # Если не удалось найти вызов, подстраховка — имя функции
-            module_name = func.__name__
+        # Определяем имя модуля из пути к файлу
+        module_name = os.path.splitext(os.path.basename(func_file_path))[0]
 
-
+        # Генерируем имя файла с временной меткой
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         return os.path.join(ROOT_PATH, "data", "output", f"{module_name}_{timestamp}.json")
 
@@ -40,8 +33,10 @@ def save_to_file(file_name: Optional[Union[str, int, None]] = None) -> Callable[
             if file_name is not None and not isinstance(file_name, str):
                 raise TypeError(f"Имя файла должно быть строкой, получено: {type(file_name).__name__}")
 
+            # Генерируем имя файла, если имя не передано
             final_file_name = file_name or generate_file_name(func)
             final_file_name = os.path.normpath(final_file_name)
+
             if not os.path.isabs(final_file_name):
                 final_file_name = os.path.join(ROOT_PATH, final_file_name)
 
