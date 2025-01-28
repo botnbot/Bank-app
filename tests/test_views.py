@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from src.views import get_operations_for_current_month, sum_by_category
+from src.views import get_operations_for_current_month, sum_by_category, get_total_spending, get_top_5
 
 
 @pytest.fixture
@@ -117,5 +117,42 @@ def test_sum_by_category_succes() -> None:
 
     result = sum_by_category(df)
     expected_data = {'Категория': ['вторая', 'первая', 'третья'], 'Сумма операции с округлением': [200, 500, 300]}
+    expected_result = pd.DataFrame(expected_data)
+    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+
+
+def test_get_total_spending() -> None:
+    """Тест успешной группировки по номерам карт"""
+    data = {
+        'Номер карты': ['1111', '2222', '4444', '2222'],
+        'Сумма операции с округлением': [100, 200, 300, 400],
+        "Кэшбэк": [1, 2, 4, 5]}
+    df = pd.DataFrame(data)
+
+    result = get_total_spending(df)
+    expected_data = {'Номер карты': ['1111', '2222', '4444'],
+                     'Сумма операции с округлением': [100, 600, 300],
+                     "Кэшбэк": [1, 7, 4]}
+    expected_result = pd.DataFrame(expected_data)
+    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+
+
+def test_get_top_5() -> None:
+    """Тест фильтрации Топ-5 транзакций"""
+    data = {
+        "Дата операции": ['2021-25-06', '2021-24-06', '2021-20-06', '2020-25-06', '2018-25-06', '2020-25-08', '2019-25-08'],
+        "Сумма операции с округлением": [1600, 16000, 20, 50, 100, 1000, 47],
+        "Категория": ['1', '2', '3', '4', '5', '6', '7'],
+        "Описание": ['Колхоз', 'Ozon.ru', 'Константин Л.', 'Константин Л.', 'Ситидрайв', 'РЖД', 'Mouse Tail'
+                     ]}
+    df = pd.DataFrame(data)
+    result = get_top_5(df)
+
+    expected_data = {
+        "Дата операции": ['2021-24-06', '2021-25-06', '2020-25-08', '2018-25-06', '2020-25-06'],
+        "Сумма операции с округлением": [16000, 1600, 1000, 100, 50],
+        "Категория": ['2', '1', '6', '5', '4'],
+        "Описание": ['Ozon.ru', 'Колхоз', 'РЖД', 'Ситидрайв', 'Константин Л.'
+                     ]}
     expected_result = pd.DataFrame(expected_data)
     assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
