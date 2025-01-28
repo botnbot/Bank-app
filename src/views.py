@@ -1,10 +1,12 @@
 import json
+import os
 from datetime import datetime
 from typing import Any, Optional, Union
 
 import pandas as pd
 from pandas import DataFrame, Series
 
+from config import ROOT_PATH
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 from src.utils import filter_dataframe, get_data, greetings
 
@@ -18,13 +20,12 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
     Returns:
         DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
     """
-    # Если current_date не передан, используем текущую дату
+    # Если current_date не передана, используем текущую дату
     if current_date is None:
         current_date_dt = datetime.now()
     elif isinstance(current_date, str):
         # Преобразование строки в datetime
         parsed_date = pd.to_datetime(current_date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
-
         if pd.isnull(parsed_date):
             raise ValueError(f"Передана некорректная дата: {current_date}")
         current_date_dt = parsed_date  # Преобразование успешно
@@ -107,7 +108,8 @@ def main(date: Optional[str]) -> str:
     """
 
     # Загрузка данных
-    df = get_data("data/operations.xlsx")
+    data_path = os.path.join(ROOT_PATH, 'data', 'operations.xlsx')
+    df = get_data(data_path)
 
     # Получение операций за текущий месяц
     df_current_month = get_operations_for_current_month(df, date)
