@@ -1,0 +1,99 @@
+import pytest
+import pandas as pd
+from pandas.testing import assert_frame_equal
+from datetime import datetime
+from src.views import get_operations_for_current_month
+
+@pytest.fixture
+def sample_dataframe():
+    """Фикстура для создания тестового DataFrame с транзакциями."""
+    data = {
+        "Дата операции": ["2025-01-10", "2025-01-20", "2025-02-05", "2025-01-25"],
+        "Сумма": [100, 200, 300, 400],
+    }
+    df = pd.DataFrame(data)
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"])
+    return df
+
+def test_get_operations_current_month_default_date(sample_dataframe):
+    """Тест: фильтрация транзакций за текущий месяц (текущая дата по умолчанию)."""
+    current_date = "2025-01-27 00:00:00"
+    filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
+
+    expected_data = {
+        "Дата операции": ["2025-01-10", "2025-01-20", "2025-01-25"],
+        "Сумма": [100, 200, 400],
+    }
+    expected_df = pd.DataFrame(expected_data)
+    expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
+
+    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
+
+def test_get_operations_current_month_string_date(sample_dataframe):
+    """Тест: фильтрация транзакций за текущий месяц (строка в формате даты)."""
+    current_date = "2025-01-27 00:00:00"
+    filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
+    expected_data = {
+        "Дата операции": ["2025-01-10", "2025-01-20", "2025-01-25"],
+        "Сумма": [100, 200, 400],
+    }
+    expected_df = pd.DataFrame(expected_data)
+    expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
+    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
+
+def test_get_operations_current_month_datetime_date(sample_dataframe):
+    """Тест: фильтрация транзакций за текущий месяц (объект datetime)."""
+    current_date = datetime(2025, 1, 15, 00, 00, 00)
+    filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
+    expected_data = {
+        "Дата операции": ["2025-01-10"],
+        "Сумма": [100],
+    }
+    expected_df = pd.DataFrame(expected_data)
+    expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
+
+    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
+
+def test_get_operations_current_month_cutoff_date(sample_dataframe):
+    """Тест: отсечение транзакций, произошедших после переданной даты."""
+    current_date = datetime(2025, 1, 20, 00, 00, 00)
+    filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
+
+    expected_data = {
+        "Дата операции": ["2025-01-10", "2025-01-20"],
+        "Сумма": [100, 200],
+    }
+    expected_df = pd.DataFrame(expected_data)
+    expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
+
+    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
+
+def test_get_operations_current_month_no_current_date(sample_dataframe):
+    """Тест: передача аргумента current_date=None."""
+    filtered_df = get_operations_for_current_month(sample_dataframe, None)
+    # Проверяем, что фильтр отработал для текущего месяца (текущая дата - дата выполнения теста).
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+
+    expected_df = sample_dataframe[
+        (pd.to_datetime(sample_dataframe["Дата операции"]).dt.year == current_year) &
+        (pd.to_datetime(sample_dataframe["Дата операции"]).dt.month == current_month)
+    ]
+    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df.reset_index(drop=True))
+
+def test_invalid_date_format(sample_dataframe):
+    """Тест: передача некорректной даты (строка)."""
+    with pytest.raises(ValueError, match="Передана некорректная дата: invalid-date"):
+        get_operations_for_current_month(sample_dataframe, "invalid-date")
+
+def test_invalid_date_type(sample_dataframe):
+    """Тест: передача недопустимого типа данных в current_date."""
+    with pytest.raises(ValueError, match="Аргумент .* должен быть строкой .* объектом datetime или None"):
+        get_operations_for_current_month(sample_dataframe, 123)
+
+def test_filter_empty_dataframe():
+    """Тест: передача пустого DataFrame."""
+    df = pd.DataFrame(columns=["Дата операции", "Сумма"])
+    filtered_df = get_operations_for_current_month(df, "2025-01-27 00:00:00")
+    assert filtered_df.empty
