@@ -72,20 +72,10 @@ def get_total_spending(df: DataFrame) -> Any:
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
-        Series: Series с суммами всех транзакций по каждой карте."""
+        Series: Series с суммами всех транзакций и суммами кэшбека по каждой карте."""
     result = df.groupby("Номер карты", as_index=False, dropna=True)[["Сумма операции с округлением", "Кэшбэк"]].sum()
     return result
 
-
-def get_cashback_sum(df: DataFrame) -> Any:
-    """
-    Функция возвращает сумму кэшбека по каждой карте
-    Args:
-        df (DataFrame): Исходный DataFrame с транзакциями.
-    Returns:
-        Series: Series с суммами кэшбека по каждой карте."""
-    result = df["Кэшбэк"].sum()
-    return result
 
 
 def get_top_5(df: DataFrame) -> DataFrame:
