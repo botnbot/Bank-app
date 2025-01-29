@@ -32,7 +32,6 @@ def get_stock_prices(symbols: tuple) -> dict:
     return prices
 
 
-
 def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
     """Функция принимает кортеж с кодами валют и возвращает словарь, где ключи это коды валют, а значения - это курсы
     этих валют"""
@@ -60,7 +59,7 @@ def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
     Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты."""
     rub_rate = rates.get(base_currency)
     if not isinstance(rub_rate, (int, float)):
-        raise ValueError('Курс рубля не передан, невозможно вычислить курсы к RUB')
+        raise ValueError("Курс рубля не передан, невозможно вычислить курсы к RUB")
 
     # Пересчет курсов валют к рублю
     rates_in_rub = {

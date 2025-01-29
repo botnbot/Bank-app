@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Sergey Korobeynikov <skoro@smn35.com>"]
 readme = "README.md"
+packages = [{include = "src"}]  # Это важно для поддержки src-based проектов
 
 [tool.poetry.dependencies]
 python = "^3.12"

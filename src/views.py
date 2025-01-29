@@ -1,15 +1,17 @@
 import json
+import os
 from datetime import datetime
 from typing import Any, Optional, Union
 
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
+from config import ROOT_PATH
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 from src.utils import filter_dataframe, get_data, greetings
 
 
-def get_operations_for_current_month(df: DataFrame, current_date: Union[str, datetime, None] = None) -> DataFrame:
+def get_operations_for_current_month(df: DataFrame, current_date: Union[str, datetime, Any, None] = None) -> Any:
     """
     Функция принимает DataFrame со всеми транзакциями и возвращает DataFrame с транзакциями за текущий месяц.
     Args:
@@ -18,13 +20,12 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
     Returns:
         DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
     """
-    # Если current_date не передан, используем текущую дату
+    # Если current_date не передана, используем текущую дату
     if current_date is None:
         current_date_dt = datetime.now()
     elif isinstance(current_date, str):
         # Преобразование строки в datetime
         parsed_date = pd.to_datetime(current_date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
-
         if pd.isnull(parsed_date):
             raise ValueError(f"Передана некорректная дата: {current_date}")
         current_date_dt = parsed_date  # Преобразование успешно
@@ -53,15 +54,19 @@ def get_operations_for_current_month(df: DataFrame, current_date: Union[str, dat
     return current_month_df
 
 
-def sum_by_category(df: DataFrame) -> Series:
+def sum_by_category(df: DataFrame) -> DataFrame:
     """
     Функция возвращает суммы расходов по категориям
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
-        Series: Series с суммами транзакций по каждой категории.
+        DataFrame с суммами транзакций по каждой категории.
     """
-    result = df.groupby("Категория", as_index=False, dropna=True)["Сумма операции с округлением"].sum()
+    result: DataFrame = (
+        df.groupby("Категория", dropna=True)["Сумма операции с округлением"]
+        .sum()
+        .reset_index()  # Преобразуем Series в DataFrame
+    )
     return result
 
 
@@ -71,19 +76,8 @@ def get_total_spending(df: DataFrame) -> Any:
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
-        Series: Series с суммами всех транзакций по каждой карте."""
+        Series: Series с суммами всех транзакций и суммами кэшбека по каждой карте."""
     result = df.groupby("Номер карты", as_index=False, dropna=True)[["Сумма операции с округлением", "Кэшбэк"]].sum()
-    return result
-
-
-def get_cashback_sum(df: DataFrame) -> Any:
-    """
-    Функция возвращает сумму кэшбека по каждой карте
-    Args:
-        df (DataFrame): Исходный DataFrame с транзакциями.
-    Returns:
-        Series: Series с суммами кэшбека по каждой карте."""
-    result = df["Кэшбэк"].sum()
     return result
 
 
@@ -107,16 +101,18 @@ def main(date: Optional[str]) -> str:
     """
 
     # Загрузка данных
-    df = get_data("data/operations.xlsx")
+    data_path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
+    df = get_data(data_path)
 
     # Получение операций за текущий месяц
     df_current_month = get_operations_for_current_month(df, date)
 
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
-    cards = total_spent_df.rename(
-        columns={"Номер карты": "last_digits", "Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"}
-    ).to_dict(orient="records")
+    total_spent_df["last_digits"] = total_spent_df["Номер карты"].astype(str).str[-4:]
+    cards = total_spent_df.rename(columns={"Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"})[
+        ["last_digits", "total_spent", "cashback"]
+    ].to_dict(orient="records")
 
     # Топ-5 транзакций
     top_five = get_top_5(df_current_month)

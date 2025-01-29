@@ -3,10 +3,9 @@ from typing import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from finnhub.exceptions import FinnhubAPIException  # type: ignore
 
-from src.external_api import get_exchange_rates, get_stock_prices, convert_to_rub
+from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 
 
 @pytest.fixture
@@ -125,7 +124,7 @@ def test_get_exchange_rates_wrong_api_key(mock_get: Mock, monkeypatch: Mock) -> 
 
 @patch("requests.get")
 def test_get_exchange_rates_api_error(mock_get: Mock) -> None:
-    """Тест  ошибки получения ключа API."""
+    """Тест ошибки получения ключа API."""
     mock_response = MagicMock()
     mock_response.json.return_value = {"success": False, "error": {"info": "Invalid API key."}}
     mock_get.return_value = mock_response
@@ -157,7 +156,7 @@ def test_get_exchange_rates_missing_currency_code(mock_get: Mock) -> None:
     assert result == {"USD": "N/A", "RUB": 75.0}
 
 
-def test_convert_to_rub_succes() -> None:
+def test_convert_to_rub_success() -> None:
     """Тест успешного пересчета курса в рубли"""
     rates = {"USD": 1.10, "EUR": 1, "RUB": 115}
     result = convert_to_rub(rates)
@@ -172,7 +171,7 @@ def test_convert_to_rub_invalid_currency_value() -> None:
 
 
 def test_convert_to_rub_missing_rub_rate() -> None:
-    """Тест отсутсвия курса рубля"""
+    """Тест отсутствия курса рубля"""
     rates = {"USD": 1.10, "EUR": 1}
     with pytest.raises(ValueError, match="Курс рубля не передан, невозможно вычислить курсы к RUB"):
         convert_to_rub(rates)
