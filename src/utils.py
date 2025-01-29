@@ -1,9 +1,10 @@
+
 import os
-from datetime import datetime
 import re
+from datetime import datetime
+from typing import Any
 
 import pandas as pd
-from pandas import DataFrame
 
 
 def greetings() -> str:
@@ -25,21 +26,20 @@ def get_data(path: str) -> pd.DataFrame:
     return df
 
 
-def filter_dataframe(df: DataFrame, filtr_conditions: dict, operator: str = "AND") -> pd.DataFrame:
+def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "AND") -> Any:
     """
-    Функция принимает датафрейм с транзакциями, и фильтрует его по заданным условиям
-    Args:
-        df (DataFrame): Исходный DataFrame.
-        filtr_conditions (dict): Словарь фильтров, где ключи — названия колонок, а значения — значения или функции
-         фильтрации.
-        operator (str): 'AND' или 'OR', как объединять условия.
-
-    Returns:
-        DataFrame: Отфильтрованный DataFrame.
+    Функция принимает датафрейм с транзакциями, и фильтрует его по заданным условиям.
     """
-
     if operator not in ("AND", "OR"):
-        raise ValueError("Условие должно быть AND или OR")
+        raise ValueError("Логический оператор должен быть строкой AND или OR")
+
+    if not filtr_conditions:
+        return df
+
+    # Проверяем, что все ключи есть в столбцах DataFrame
+    missing_keys = [key for key in filtr_conditions if key not in df.columns]
+    if missing_keys:
+        raise KeyError(f"Столбцы {missing_keys} отсутствуют в DataFrame")
 
     conditions = []
     for key, condition in filtr_conditions.items():
@@ -52,21 +52,14 @@ def filter_dataframe(df: DataFrame, filtr_conditions: dict, operator: str = "AND
         else:
             # Если передано значение, проверяем равенство
             conditions.append(df[key] == condition)
+
     combined_conditions = conditions[0]
     for condition in conditions[1:]:
         if operator == "AND":
             combined_conditions &= condition
         else:
             combined_conditions |= condition
-    filtered_df = df[combined_conditions]
-    # Убедимся, что filtered_df действительно типа DataFrame
-    assert isinstance(filtered_df, DataFrame)
 
+    filtered_df = df[combined_conditions]
     return filtered_df
 
-
-if __name__ == "__main__":
-    df = get_data("data\\operations.xlsx")
-    print(df.head())
-    example_df = df.iloc[:10]
-    print(example_df)

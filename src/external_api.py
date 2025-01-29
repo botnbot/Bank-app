@@ -22,9 +22,10 @@ def get_stock_prices(symbols: tuple) -> dict:
             prices[symbol] = quote["c"]
 
         except finnhub.exceptions.FinnhubAPIException as e:
-            prices[symbol] = f"Ошибка API {e}"
+            error_message = e.response.json() if hasattr(e.response, "json") else str(e)
+            prices[symbol] = f"Ошибка API {error_message}"
         except ValueError as e:
-            prices[symbol] = f"Ошибка {e}"
+            prices[symbol] = f"Ошибка API {e}"
         except Exception as e:
             prices[symbol] = f"Неизвестная ошибка: {e}"
 
@@ -54,33 +55,17 @@ def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
 
 
 def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
-    """
-    Пересчитывает курсы валют в значения относительно рубля.
-    Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты.
-    """
+    """Пересчитывает курсы валют в значения относительно рубля.
+    Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты."""
     rub_rate = rates.get(base_currency)
     if not isinstance(rub_rate, (int, float)):
-        raise ValueError(f"Курс {base_currency} отсутствует или некорректен: {rub_rate}")
+        raise ValueError("Курс рубля не передан, невозможно вычислить курсы к RUB")
 
-    # Пересчет курсов валют в рубли
+    # Пересчет курсов валют к рублю
     rates_in_rub = {
-        currency: (rub_rate / rate if isinstance(rate, (int, float)) else "N/A") for currency, rate in rates.items()
+        currency: (round(rub_rate / rate, 2) if isinstance(rate, (int, float)) else "N/A")
+        for currency, rate in rates.items()
+        if currency != base_currency  # Исключаем базовую валюту
     }
-    rates_in_rub[base_currency] = 1.0  # RUB к RUB всегда 1.0
 
     return rates_in_rub
-
-
-if __name__ == "__main__":
-    tikers = ("AAPL", "TSLA")
-    print(get_stock_prices(tikers))
-
-    currency = ("USD", "GBP", "EUR", "JPY")
-    try:
-        # Получение курсов валют
-        rates = get_exchange_rates(currency)
-        # Пересчет курсов относительно рубля
-        rates_in_rub = convert_to_rub(rates)
-        print(rates_in_rub)
-    except ValueError as e:
-        print(f"Ошибка: {e}")
