@@ -54,3 +54,4 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
 #             break
 #         except ValueError as e:
 #             print(e)
+
