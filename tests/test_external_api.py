@@ -3,10 +3,9 @@ from typing import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from finnhub.exceptions import FinnhubAPIException  # type: ignore
 
-from src.external_api import get_exchange_rates, get_stock_prices, convert_to_rub
+from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 
 
 @pytest.fixture
