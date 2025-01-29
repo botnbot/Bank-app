@@ -1,6 +1,6 @@
 import os.path
 import re
-from typing import Optional
+from typing import Optional, Any
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
@@ -8,7 +8,7 @@ from src.utils import filter_dataframe, get_data
 
 
 @save_to_file()
-def find_money_transfers_from_individuals(data_path: str) -> str:
+def find_money_transfers_from_individuals(data_path: str) -> Any:
     """Функция, возвращающая JSON с переводами только физическим лицам.
      Args:
         data_path (str): путь к исходному DataFrame.
@@ -25,18 +25,18 @@ def find_money_transfers_from_individuals(data_path: str) -> str:
     return result.to_json(orient="records", force_ascii=False)
 
 
-if __name__ == "__main__":
-    while True:
-        try:
-            date: Optional[str] = input(
-                "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS"
-                " в диапазоне с 2018-01-01 по 2021-12-31,"
-                " или нажмите Enter для использования текущей даты: "
-            ).strip()
-            if not date:  # Пустой ввод — текущая дата
-                date = None
-            path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
-            print(find_money_transfers_from_individuals(path))
-            break
-        except ValueError as e:
-            print(e)
+# if __name__ == "__main__":
+#     while True:
+#         try:
+#             date: Optional[str] = input(
+#                 "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS"
+#                 " в диапазоне с 2018-01-01 по 2021-12-31,"
+#                 " или нажмите Enter для использования текущей даты: "
+#             ).strip()
+#             if not date:  # Пустой ввод — текущая дата
+#                 date = None
+#             path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
+#             print(find_money_transfers_from_individuals(path))
+#             break
+#         except ValueError as e:
+#             print(e)
