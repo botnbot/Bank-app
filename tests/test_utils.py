@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.utils import filter_dataframe, get_data, greetings
+from src.utils import filter_dataframe, get_data, greetings, get_date
 
 
 @pytest.mark.parametrize(
@@ -207,3 +207,31 @@ def test_filter_dataframe_missing_column() -> None:
     conditions = {125: "Значение"}  # Несуществующий столбец
     with pytest.raises(KeyError, match="Столбцы \\[125\\] отсутствуют в DataFrame"):
         filter_dataframe(df, conditions)
+
+
+@pytest.mark.parametrize(
+    "mock_input, expected_output",
+    [
+        ("", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),  # Пустой ввод → текущая дата
+        ("2021-12-31 23:59:59", "2021-12-31 23:59:59"),  # Корректная дата
+    ],
+)
+@patch("builtins.input")  # Мокаем `input()`
+def test_get_date(mock_input_function, mock_input, expected_output):
+    """Тестируем разные сценарии работы get_date()."""
+
+    mock_input_function.side_effect = [mock_input]  # Симулируем ввод пользователя
+    result = get_date()  # Вызываем тестируемую функцию
+
+    assert result == expected_output  # Проверяем корректность
+
+
+@patch("builtins.input", side_effect=["invalid date", "2021-12-31 23:59:59"])  # 1-я попытка неверная, 2-я успешная
+def test_get_date_invalid_retry(mock_input_function):
+    """Тестируем сценарий, когда пользователь вводит некорректную дату и исправляет её."""
+
+    result = get_date()
+    assert result == "2021-12-31 23:59:59"
+
+
+
