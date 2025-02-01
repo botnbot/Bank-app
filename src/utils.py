@@ -6,7 +6,9 @@ import pandas as pd
 
 
 def greetings() -> str:
-    """Функция возвращает приветствие в зависимости от времени суток"""
+    """
+    Функция возвращает приветствие в зависимости от времени суток
+    """
     time = datetime.now().hour
     if 4 < time <= 10:
         return "Доброе утро!"
@@ -19,14 +21,19 @@ def greetings() -> str:
 
 
 def get_data(path: str) -> pd.DataFrame:
-    """Функция принимает на вход путь к файлу .xlsx и возвращает DataFrame"""
+    """
+    Функция принимает на вход путь к файлу .xlsx в виде строки и возвращает DataFrame с транзакциями
+         Args:
+        str: путь к файлу
+        Returns:
+        pd.DataFrame: DataFrame."""
     df = pd.read_excel(path)
     return df
 
 
 def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "AND") -> Any:
     """
-    Функция принимает датафрейм с транзакциями, и фильтрует его по заданным условиям.
+    Функция принимает DataFrame с транзакциями, и фильтрует его по заданным условиям.
     """
     if operator not in ("AND", "OR"):
         raise ValueError("Логический оператор должен быть строкой AND или OR")
@@ -63,6 +70,10 @@ def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "
 
 
 def get_date() -> Optional[str]:
+    """
+    Функция, запрашивающая у пользователя дату для передачи в функцию
+
+    """
     while True:
         try:
             date: Optional[str] = input(
