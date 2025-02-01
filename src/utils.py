@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -60,3 +60,26 @@ def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "
 
     filtered_df = df[combined_conditions]
     return filtered_df
+
+
+def get_date() -> Optional[str]:
+    while True:
+        try:
+            date: Optional[str] = input(
+                "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS"
+                " в диапазоне с 2018-01-01 по 2021-12-31,"
+                " или нажмите Enter для использования текущей даты: "
+            ).strip()
+
+            # Проверяем, если ввод пустой
+            if not date:
+                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем текущую дату
+
+            # Пробуем преобразовать введённую дату
+            date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+            break
+
+        except ValueError as e:
+            print(f'Не удалось получить дату: {e}. Попробуйте снова.')
+    return date.strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем дату в нужном формате
+
