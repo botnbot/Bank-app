@@ -1,12 +1,15 @@
 import json
+import logging
 import os
 from datetime import datetime
+from logging import Formatter, DEBUG, getLogger, WARNING
 from typing import Any, Optional, Union
 
 import pandas as pd
 from pandas import DataFrame
 
 from config import ROOT_PATH
+from src.decorators import save_to_file
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 from src.utils import filter_dataframe, get_data, greetings
 
@@ -86,8 +89,8 @@ def get_top_5(df: DataFrame) -> DataFrame:
     df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
     return df_top_five[["Дата операции", "Сумма операции с округлением", "Категория", "Описание"]].head(5)
 
-
-def main(date: Optional[str]) -> str:
+@save_to_file()
+def main() -> str:
     """
     Функция, принимающая на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
      и возвращающую JSON-ответ со следующими данными:
@@ -99,20 +102,47 @@ def main(date: Optional[str]) -> str:
       Курс валют.
       Стоимость акций из S&P 500.
     """
+    loger = getLogger('views')
+    loger.setLevel(DEBUG)
 
+    formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+
+    consolehandler = logging.StreamHandler()
+    consolehandler.setFormatter(formatter)
+    consolehandler.setLevel(DEBUG)
+
+    logpath = os.path.join(ROOT_PATH, 'logs')
+    os.makedirs(logpath, exist_ok=True)  # Создаём только папку, а не файл!
+    logfile = os.path.join(ROOT_PATH, 'logs', 'log.txt')
+    try:
+        filehandler = logging.FileHandler(logfile, mode="a")
+        filehandler.setLevel(WARNING)
+        filehandler.setFormatter(formatter)
+        if not loger.handlers:
+            loger.addHandler(consolehandler)
+            loger.addHandler(filehandler)
+    except PermissionError as e:
+        loger.error(f"Ошибка доступа к файлу логов: {e}")
+
+    loger.info("Запуск")
     # Загрузка данных
     data_path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
     df = get_data(data_path)
+    loger.info("Данные из файла загружены")
+
+    # Получение даты
+    date = get_date()
 
     # Получение операций за текущий месяц
     df_current_month = get_operations_for_current_month(df, date)
-
+    loger.info("данные за текущий месяц получены")
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
     total_spent_df["last_digits"] = total_spent_df["Номер карты"].astype(str).str[-4:]
     cards = total_spent_df.rename(columns={"Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"})[
         ["last_digits", "total_spent", "cashback"]
     ].to_dict(orient="records")
+    loger.info("Данные по картам обработаны")
 
     # Топ-5 транзакций
     top_five = get_top_5(df_current_month)
@@ -125,29 +155,42 @@ def main(date: Optional[str]) -> str:
             "Описание": "description",
         }
     ).to_dict(orient="records")
+    loger.info("Топ-5 транзакций обработаны")
 
     # Загрузка пользовательских настроек
-    with open("user_settings.json", "r") as f:
+    user_settings_path = os.path.join(ROOT_PATH, "user_settings.json")
+    with open(user_settings_path, "r") as f:
         user_settings = json.load(f)
     stocks = user_settings["user_stocks"]
     currency = user_settings["user_currencies"]
+    loger.info("Пользовательские настройки получены")
 
     # Получение курсов акций
     try:
         stock_prices = get_stock_prices(stocks)
-        stock_prices_formatted = [{"stock": stock, "price": price} for stock, price in stock_prices.items()]
+        loger.info("Запрос курса акций")
+
+        stock_prices_formatted = []
+        for stock, price in stock_prices.items():
+            if "Ошибка API" in price:
+                loger.warning(f"Ошибка API. Не удалось получить курс акций для {stock}")
+            else:
+                stock_prices_formatted.append({"stock": stock, "price": price})
     except Exception as e:
-        print(f"Ошибка получения курсов акций: {e}")
+        loger.error(f"Ошибка API при получении курсов акций: {e}")
         stock_prices_formatted = []
 
     # Получение курсов валют
     try:
         rates = get_exchange_rates(currency)
+        loger.info("Запрос курса валют")
         rub_rates = convert_to_rub(rates)
         currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
+        loger.info("Получен курс валют")
     except Exception as e:
-        print(f"Ошибка получения курсов валют: {e}")
         currency_rates_formatted = []
+        loger.warning(f"Ошибка получения курсов валют: {e}")
+
 
     # Финальный JSON-ответ
     result = {
@@ -157,10 +200,12 @@ def main(date: Optional[str]) -> str:
         "currency_rates": currency_rates_formatted,
         "stock_prices": stock_prices_formatted,
     }
+    loger.info("Ответ сформирован")
     return json.dumps(result, indent=4, ensure_ascii=False)
 
 
-if __name__ == "__main__":
+
+def get_date() -> Optional[str]:
     while True:
         try:
             date: Optional[str] = input(
@@ -168,9 +213,13 @@ if __name__ == "__main__":
                 " в диапазоне с 2018-01-01 по 2021-12-31,"
                 " или нажмите Enter для использования текущей даты: "
             ).strip()
-            if not date:  # Пустой ввод — текущая дата
+            if not date:
                 date = None
-            print(main(date))
             break
         except ValueError as e:
-            print(e)
+            raise ValueError('Неверный формат даты')
+    return date
+
+
+if __name__ == "__main__":
+    print(main())
