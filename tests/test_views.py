@@ -3,8 +3,6 @@ from datetime import datetime
 import pandas as pd
 import pytest
 from pandas import DataFrame
-
-
 from pandas.testing import assert_frame_equal
 
 from src.views import get_operations_for_current_month, get_top_5, get_total_spending, sum_by_category
@@ -90,7 +88,7 @@ def test_get_operations_current_month_no_current_date(sample_dataframe: DataFram
     expected_df = sample_dataframe[
         (pd.to_datetime(sample_dataframe["Дата операции"]).dt.year == current_year)
         & (pd.to_datetime(sample_dataframe["Дата операции"]).dt.month == current_month)
-    ]
+        ]
     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df.reset_index(drop=True))
 
 
