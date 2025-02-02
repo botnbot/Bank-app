@@ -71,26 +71,26 @@ def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "
 
 def get_date() -> Optional[str]:
     """
-    Функция, запрашивающая у пользователя дату для передачи в функцию
-
+    Функция, запрашивающая у пользователя дату для передачи в функцию.
+    Возвращает дату в формате "YYYY-MM-DD HH:MM:SS".
+    Если ввод пустой, возвращает текущую дату.
     """
     while True:
         try:
-            date: Optional[str] = input(
-                "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS"
-                " в диапазоне с 2018-01-01 по 2021-12-31,"
-                " или нажмите Enter для использования текущей даты: "
+            date_input: Optional[str] = input(
+                "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS "
+                "в диапазоне с 2018-01-01 по 2021-12-31, "
+                "или нажмите Enter для использования текущей даты: "
             ).strip()
 
             # Проверяем, если ввод пустой
-            if not date:
+            if not date_input:
                 return datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем текущую дату
 
             # Пробуем преобразовать введённую дату
-            date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+            date = datetime.strptime(date_input, "%Y-%m-%d %H:%M:%S")
+
             break
-
         except ValueError as e:
-            print(f'Не удалось получить дату: {e}. Попробуйте снова.')
+            print(f"Не удалось получить дату: {e}. Попробуйте снова.")
     return date.strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем дату в нужном формате
-
