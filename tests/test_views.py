@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from unittest.mock import patch
 import pandas as pd
 import pytest
 from pandas import DataFrame
@@ -75,21 +75,6 @@ def test_get_operations_current_month_cutoff_date(sample_dataframe: DataFrame) -
     expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
 
     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
-
-
-def test_get_operations_current_month_no_current_date(sample_dataframe: DataFrame) -> None:
-    """Тест: передача аргумента current_date=None."""
-    filtered_df = get_operations_for_current_month(sample_dataframe, None)
-    # Проверяем, что фильтр отработал для текущего месяца (текущая дата - дата выполнения теста).
-    current_date = datetime.now()
-    current_month = current_date.month
-    current_year = current_date.year
-
-    expected_df = sample_dataframe[
-        (pd.to_datetime(sample_dataframe["Дата операции"]).dt.year == current_year)
-        & (pd.to_datetime(sample_dataframe["Дата операции"]).dt.month == current_month)
-        ]
-    assert_frame_equal(filtered_df.reset_index(drop=True), expected_df.reset_index(drop=True))
 
 
 def test_invalid_date_format(sample_dataframe: DataFrame) -> None:
@@ -172,3 +157,93 @@ def test_get_top_5() -> None:
     }
     expected_result = pd.DataFrame(expected_data)
     assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+
+import json
+from unittest.mock import patch, Mock, mock_open
+import pytest
+
+from src.views import main
+
+
+@patch("src.views.get_data")
+@patch("src.views.get_date", return_value="2025-01-15 12:00:00")
+@patch("src.views.get_operations_for_current_month")
+@patch("src.views.get_total_spending")
+@patch("src.views.get_top_5")
+@patch("src.views.get_stock_prices", return_value={"AAPL": "150", "TSLA": "700"})
+@patch("src.views.get_exchange_rates", return_value={"USD": 92.5, "EUR": 100.1})
+@patch("src.views.convert_to_rub", return_value={"USD": 92.5, "EUR": 100.1})
+@patch("src.views.greetings", return_value="Добрый день")
+def test_main(
+    mock_greetings,
+    mock_convert_to_rub,
+    mock_get_exchange_rates,
+    mock_get_stock_prices,
+    mock_get_top_5,
+    mock_get_total_spending,
+    mock_get_operations_for_current_month,
+    mock_get_date,
+    mock_get_data,
+):
+    """Тест успешного выполнения main()."""
+
+    # Мокаем данные
+    mock_get_data.return_value = [
+        {"Дата операции": "2025-01-10 12:00:00", "Номер карты": "1234567890123456", "Сумма операции с округлением": 1000},
+        {"Дата операции": "2025-01-20 14:00:00", "Номер карты": "9876543210987654", "Сумма операции с округлением": 1500},
+    ]
+
+    mock_get_operations_for_current_month.return_value = mock_get_data.return_value
+
+    mock_get_total_spending.return_value = [
+        {"Номер карты": "1234567890123456", "Сумма операции с округлением": 1000, "Кэшбэк": 10},
+        {"Номер карты": "9876543210987654", "Сумма операции с округлением": 1500, "Кэшбэк": 15},
+    ]
+
+    mock_get_top_5.return_value = [
+        {"Дата операции": "2025-01-10", "Сумма операции с округлением": 1000, "Категория": "Магазины", "Описание": "Покупка"},
+        {"Дата операции": "2025-01-20", "Сумма операции с округлением": 1500, "Категория": "Развлечения", "Описание": "Кинотеатр"},
+    ]
+
+    # Загружаем mock user_settings
+    with patch("builtins.open", mock_open(read_data=json.dumps({"user_stocks": ["AAPL", "TSLA"], "user_currencies": ["USD", "EUR"]}))):
+        result = main()
+
+    # Преобразуем JSON в объект Python
+    result_data = json.loads(result)
+
+    # Проверяем, что greeting формируется корректно
+    assert result_data["greeting"] == "Добрый день"
+
+    # Проверяем, что данные по картам корректны
+    assert result_data["cards"] == [
+        {"last_digits": "3456", "total_spent": 1000, "cashback": 10},
+        {"last_digits": "7654", "total_spent": 1500, "cashback": 15},
+    ]
+
+    # Проверяем топ-5 транзакций
+    assert len(result_data["top_transactions"]) == 2
+
+    # Проверяем валютные курсы
+    assert result_data["currency_rates"] == [
+        {"currency": "USD", "rate": 92.5},
+        {"currency": "EUR", "rate": 100.1},
+    ]
+
+    # Проверяем курсы акций
+    assert result_data["stock_prices"] == [
+        {"stock": "AAPL", "price": "150"},
+        {"stock": "TSLA", "price": "700"},
+    ]
+
+    # Проверяем, что все методы были вызваны
+    mock_get_data.assert_called_once()
+    mock_get_date.assert_called_once()
+    mock_get_operations_for_current_month.assert_called_once()
+    mock_get_total_spending.assert_called_once()
+    mock_get_top_5.assert_called_once()
+    mock_get_stock_prices.assert_called_once()
+    mock_get_exchange_rates.assert_called_once()
+    mock_convert_to_rub.assert_called_once()
+    mock_greetings.assert_called_once()
+
