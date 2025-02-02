@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.utils import filter_dataframe, get_data, greetings, get_date
+from src.utils import filter_dataframe, get_data, get_date, greetings
 
 
 @pytest.mark.parametrize(
@@ -217,7 +217,7 @@ def test_filter_dataframe_missing_column() -> None:
     ],
 )
 @patch("builtins.input")  # Мокаем `input()`
-def test_get_date(mock_input_function, mock_input, expected_output):
+def test_get_date(mock_input_function: Mock, mock_input: Mock, expected_output: Mock) -> None:
     """Тестируем разные сценарии работы get_date()."""
 
     mock_input_function.side_effect = [mock_input]  # Симулируем ввод пользователя
@@ -227,11 +227,8 @@ def test_get_date(mock_input_function, mock_input, expected_output):
 
 
 @patch("builtins.input", side_effect=["invalid date", "2021-12-31 23:59:59"])  # 1-я попытка неверная, 2-я успешная
-def test_get_date_invalid_retry(mock_input_function):
+def test_get_date_invalid_retry(mock_input_function: Mock) -> None:
     """Тестируем сценарий, когда пользователь вводит некорректную дату и исправляет её."""
 
     result = get_date()
     assert result == "2021-12-31 23:59:59"
-
-
-
