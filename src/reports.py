@@ -1,12 +1,11 @@
 import logging
 import os
 from datetime import datetime
-from logging import getLogger, Formatter, DEBUG, WARNING
+from logging import DEBUG, WARNING, Formatter, getLogger
 from typing import Any, Union
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-from pandas import DataFrame
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
@@ -14,10 +13,10 @@ from src.utils import filter_dataframe, get_data, get_date
 
 
 @save_to_file()
-def get_report_by_category() -> str:
+def get_report_by_category() -> Union[str, Any]:
     """Возвращает JSON с тратами по категории за последние 3 месяца."""
 
-    loger = getLogger('reports')
+    loger = getLogger("reports")
 
     if not loger.handlers:  # Избегаем дублирования хендлеров
         formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
@@ -25,9 +24,9 @@ def get_report_by_category() -> str:
         consolehandler.setFormatter(formatter)
         consolehandler.setLevel(DEBUG)
 
-        logpath = os.path.join(ROOT_PATH, 'logs')
+        logpath = os.path.join(ROOT_PATH, "logs")
         os.makedirs(logpath, exist_ok=True)
-        logfile = os.path.join(logpath, 'log.txt')
+        logfile = os.path.join(logpath, "log.txt")
 
         try:
             filehandler = logging.FileHandler(logfile, mode="a")
@@ -41,16 +40,16 @@ def get_report_by_category() -> str:
     optional_date = get_date()
     if optional_date is None:
         date = datetime.now()
-        loger.warning('Дата не передана, используется текущая дата')
+        loger.warning("Дата не передана, используется текущая дата")
     else:
         date = datetime.strptime(optional_date, "%Y-%m-%d %H:%M:%S")
-        loger.debug(f'Дата передана: {date}')
+        loger.debug(f"Дата передана: {date}")
 
     old_date = date - relativedelta(months=3)
-    data_path = os.path.join(ROOT_PATH, 'data', 'operations.xlsx')
+    data_path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
 
     df = get_data(data_path)
-    loger.debug('Данные из файла получены')
+    loger.debug("Данные из файла получены")
 
     df["Дата операции временная"] = pd.to_datetime(df["Дата операции"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
 
@@ -69,5 +68,5 @@ def get_report_by_category() -> str:
 
 
 if __name__ == "__main__":
-    getLogger('reports').setLevel(DEBUG)  # Логируем только в main
-    print(get_report_by_category())
+    getLogger("reports").setLevel(DEBUG)  # Логируем только в main
+    get_report_by_category()
