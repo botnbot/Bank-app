@@ -8,7 +8,9 @@ load_dotenv()
 api_key = os.getenv("apikey")
 
 
-def get_stock_prices(symbols: tuple) -> dict:
+def get_stock_prices(
+        symbols: tuple
+) -> dict:
     """Функция принимает кортеж с названиями акций и возвращает словарь, где ключи - тикеры, а значения это их цены"""
     finnhub_client = finnhub.Client(api_key=api_key)
     prices = {}
@@ -28,13 +30,16 @@ def get_stock_prices(symbols: tuple) -> dict:
             prices[symbol] = f"Ошибка API {e}"
         except Exception as e:
             prices[symbol] = f"Неизвестная ошибка: {e}"
-
     return prices
 
 
-def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
-    """Функция принимает кортеж с кодами валют и возвращает словарь, где ключи это коды валют, а значения - это курсы
-    этих валют"""
+def get_exchange_rates(
+        currency_codes: tuple = ("RUB",)
+) -> dict:
+    """
+    Функция принимает кортеж с кодами валют и возвращает словарь, где ключи это коды валют, а значения - это курсы
+    этих валют
+    """
 
     access_key = os.getenv("API_KEY")
     if not access_key:
@@ -54,9 +59,14 @@ def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
     return {code: rates.get(code, "N/A") for code in currency_codes}
 
 
-def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
+def convert_to_rub(
+        rates: dict,
+        base_currency: str = "RUB"
+) -> dict:
     """Пересчитывает курсы валют в значения относительно рубля.
-    Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты."""
+    Принимает на вход словарь с курсами валют и код валюты, на которую надо произвести пересчет курсов.
+    Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты.
+    """
     rub_rate = rates.get(base_currency)
     if not isinstance(rub_rate, (int, float)):
         raise ValueError("Курс рубля не передан, невозможно вычислить курсы к RUB")
@@ -67,5 +77,4 @@ def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
         for currency, rate in rates.items()
         if currency != base_currency  # Исключаем базовую валюту
     }
-
     return rates_in_rub
