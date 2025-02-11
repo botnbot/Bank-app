@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from pandas import DataFrame
@@ -34,7 +34,7 @@ def get_data(path: str) -> pd.DataFrame:
 
 def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "AND") -> Any:
     """
-    Функция принимает датафрейм с транзакциями, и фильтрует его по заданным условиям.
+    Функция принимает DataFrame с транзакциями, и фильтрует его по заданным условиям.
     """
     if operator not in ("AND", "OR"):
         raise ValueError("Логический оператор должен быть строкой AND или OR")
@@ -70,7 +70,7 @@ def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "
     return filtered_df
 
 
-def get_date() -> Optional[str]:
+def get_date() -> str:
     """
     Функция, запрашивающая у пользователя дату для передачи в функцию.
     Возвращает дату в формате "YYYY-MM-DD HH:MM:SS".
@@ -78,40 +78,46 @@ def get_date() -> Optional[str]:
     """
     while True:
         try:
-            date_input: Optional[str] = input(
+            date_input: str = input(
                 "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS "
                 "в диапазоне с 2018-01-01 по 2021-12-31, "
                 "или нажмите Enter для использования текущей даты: "
             ).strip()
 
-            # Проверяем, если ввод пустой
             if not date_input:
-                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем текущую дату
+                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Пробуем преобразовать введённую дату
             date = datetime.strptime(date_input, "%Y-%m-%d %H:%M:%S")
+            return date.strftime("%Y-%m-%d %H:%M:%S")
 
-            break
         except ValueError as e:
             print(f"Не удалось получить дату: {e}. Попробуйте снова.")
-    return date.strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем дату в нужном формате
 
 
 def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") -> Any:
     """
-    Фильтрует DataFrame по заданному периоду (неделя, месяц, год, все время).
-    :param:
-        date:str Дата в формате "YYYY-MM-DD HH:MM:SS"
-        df:DataFrame Исходный DataFrame с транзакциями
-        period_type:str необязательный параметр — диапазон данных. По умолчанию диапазон равен одному месяцу
-                    (с начала месяца, на который выпадает дата, по саму дату).
-                    Возможные значения этого необязательного параметра:
-                    W — неделя, на которую приходится дата;
-                    M — месяц, на который приходится дата;
-                    Y — год, на который приходится дата;
-                    ALL — все данные до указанной даты.
-    :return:
-        Отфильтрованный DataFrame
+    Возвращает транзакции за текущий период.
+
+    Функция принимает DataFrame со всеми транзакциями и фильтрует его, оставляя только операции,
+    которые произошли в пределах заданного периода.
+
+    Args:
+        df (DataFrame): Исходный DataFrame с транзакциями. Должен содержать столбец "Дата операции".
+        date (str): Строка с датой и временем в формате YYYY-MM-DD HH:MM:SS для определения заданного периода.
+        Если не передана, используется текущая дата.
+        period_type (str): Диапазон данных. По умолчанию диапазон равен одному месяцу
+         (с начала месяца, на который выпадает дата, по саму дату).
+         Возможные значения параметра:
+         W — неделя, на которую приходится дата;
+         M — месяц, на который приходится дата;
+         Y — год, на который приходится дата;
+         ALL — все данные до указанной даты.
+
+    Returns:
+        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
+
+    Raises:
+        ValueError: Если в DataFrame отсутствует столбец "Дата операции".
     """
 
     parsed_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
