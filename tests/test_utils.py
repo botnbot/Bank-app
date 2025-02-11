@@ -1,14 +1,13 @@
 import re
 from datetime import datetime
-from typing import Any
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 from pandas import DataFrame
 from pandas._testing import assert_frame_equal
 
-from src.utils import filter_dataframe, get_data, get_df_for_current_period, greetings, get_date
+from src.utils import filter_dataframe, get_data, get_date, get_df_for_current_period, greetings
 
 
 @pytest.mark.parametrize(
@@ -16,17 +15,17 @@ from src.utils import filter_dataframe, get_data, get_df_for_current_period, gre
     [
         ("2019-05-15 14:30:00", "2019-05-15 14:30:00"),  # Корректный ввод
         ("2021-12-31 23:59:59", "2021-12-31 23:59:59"),  # Граничное значение
-    ]
+    ],
 )
-def test_get_date_valid_input(user_input, expected):
+def test_get_date_valid_input(user_input: str, expected: str) -> None:
     with patch("builtins.input", return_value=user_input):
         assert get_date() == expected
 
 
-def test_get_date_empty_input():
+def test_get_date_empty_input() -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with patch("builtins.input", return_value=""):
-        assert get_date()[:16] == now[:16]  # Проверяем только YYYY-MM-DD HH:MM
+        assert get_date()[:16] == now[:16]
 
 
 @pytest.mark.parametrize(
@@ -37,10 +36,10 @@ def test_get_date_empty_input():
         "2019-13-01 12:00:00",  # Неверный месяц
         "2019-05-32 12:00:00",  # Неверный день
         "2019-02-29 12:00:00",  # 29 февраля в невисокосный год
-        "abcd-ef-gh ij:kl:mn"  # Полностью некорректный ввод
-    ]
+        "abcd-ef-gh ij:kl:mn",  # Полностью некорректный ввод
+    ],
 )
-def test_get_date_invalid_input(invalid_input):
+def test_get_date_invalid_input(invalid_input: str) -> None:
     with patch("builtins.input", side_effect=[invalid_input, "2020-01-01 12:00:00"]):
         assert get_date() == "2020-01-01 12:00:00"  # После ошибки ввод корректной даты
 
