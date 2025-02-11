@@ -1,13 +1,14 @@
+import json
+import logging
 from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 from pandas import DataFrame
-
-
 from pandas.testing import assert_frame_equal
 
-from src.views import get_operations_for_current_month, get_top_5, get_total_spending, sum_by_category
+from src.views import get_operations_for_current_month, get_top_5, get_total_spending, main, sum_by_category
 
 
 @pytest.fixture
@@ -20,6 +21,7 @@ def sample_dataframe() -> DataFrame:
     df = pd.DataFrame(data)
     df["Дата операции"] = pd.to_datetime(df["Дата операции"])
     return df
+
 
 
 def test_get_operations_current_month_default_date(sample_dataframe: DataFrame) -> None:
@@ -174,3 +176,76 @@ def test_get_top_5() -> None:
     }
     expected_result = pd.DataFrame(expected_data)
     assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+
+
+@patch("src.views.get_data")
+@patch("src.views.get_df_for_current_period")
+@patch("src.views.get_total_spending")
+@patch("src.views.get_top_5")
+@patch("src.views.get_stock_prices")
+@patch("src.views.get_exchange_rates")
+@patch("src.views.convert_to_rub")
+
+def test_views(
+    mock_convert_to_rub: Mock,
+    mock_get_exchange_rates: Mock,
+    mock_get_stock_prices: Mock,
+    mock_get_top_5: Mock,
+    mock_get_total_spending: Mock,
+    mock_get_df_for_current_period: Mock,
+    mock_get_data: Mock,
+) -> None:
+    """
+    Tестирует основную функцию main() и проверяет правильность JSON-ответа.
+    """
+    logging.disable(logging.CRITICAL)  # Отключает все логи
+
+    try:
+        df = pd.DataFrame(
+            {
+                "Дата операции": ["2024-01-10 12:00:00", "2024-01-15 15:30:00"],
+                "Номер карты": ["1234567890123456", "9876543210987654"],
+                "Сумма операции с округлением": [1000, 2000],
+                "Кэшбэк": [10, 20],
+                "Категория": ["Продукты", "Транспорт"],
+                "Описание": ["Покупка еды", "Проезд"],
+            }
+        )
+        # Передаем DataFrame вместо Mock
+        mock_get_data.return_value = df
+        mock_get_df_for_current_period.return_value = df
+        mock_get_total_spending.return_value = pd.DataFrame(
+            [{"Номер карты": "1234567890123456", "Сумма операции с округлением": 1000, "Кэшбэк": 10}]
+        )
+
+        mock_get_top_5.return_value = df.to_dict(orient="records")
+
+        mock_get_stock_prices.return_value = {"AAPL": 150.0}
+        mock_get_exchange_rates.return_value = {"USD": 80.0}
+        mock_convert_to_rub.return_value = {"USD": 80.0}
+
+        response = main("2024-01-15 12:00:00")
+        result = json.loads(response)
+        print(result)
+
+        # Проверяем, что результат - это JSON
+        assert isinstance(result, dict)
+
+        assert "greeting" in result
+        assert "cards" in result
+        assert "top_transactions" in result
+        assert "currency_rates" in result
+        assert "stock_prices" in result
+
+        # Дополнительные проверки структуры JSON
+        assert isinstance(result["cards"], list)
+        assert isinstance(result["top_transactions"], list)
+        assert isinstance(result["currency_rates"], list)
+        assert isinstance(result["stock_prices"], list)
+
+        # Проверка, что у карт есть все нужные поля
+        assert all("last_digits" in card for card in result["cards"])
+        assert all("total_spent" in card for card in result["cards"])
+        assert all("cashback" in card for card in result["cards"])
+    finally:
+        logging.disable(logging.NOTSET)  # Включает логирование обратно после теста
