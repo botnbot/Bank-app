@@ -1,12 +1,9 @@
-import os
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-from pandas import DataFrame
 
-from config import ROOT_PATH
 from src.decorators import save_to_file
 from src.utils import filter_dataframe, get_data
 
