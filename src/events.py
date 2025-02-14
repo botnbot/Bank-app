@@ -77,6 +77,7 @@ def events(
     loger.info("Данные за период отфильтрованы")
 
     # Преобразуем столбец "Дата операции" в datetime
+    df = df.copy()  # Создаём копию, чтобы избежать SettingWithCopyWarning
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
     # Расходы
@@ -163,4 +164,4 @@ def events(
 
 
 if __name__ == "__main__":
-    print(events("2018-06-10 22:22:22", "ALL"))
+    print(events("2018-05-10 22:22:22", "ALL"))
