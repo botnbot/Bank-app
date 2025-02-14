@@ -1,9 +1,8 @@
 import json
 import logging
 import os
-from datetime import datetime
 from logging import DEBUG, WARNING, Formatter, getLogger
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
 from pandas import DataFrame
@@ -11,7 +10,7 @@ from pandas import DataFrame
 from config import ROOT_PATH
 from src.decorators import save_to_file
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
-from src.utils import filter_dataframe, get_data, get_df_for_current_period, greetings
+from src.utils import get_data, get_df_for_current_period, greetings
 
 loger = getLogger("views")
 loger.setLevel(DEBUG)
@@ -34,49 +33,6 @@ try:
         loger.addHandler(filehandler)
 except PermissionError as e:
     loger.error(f"Ошибка доступа к файлу логов: {e}")
-
-
-def get_operations_for_current_month(df: DataFrame, current_date: Union[str, datetime, Any, None] = None) -> Any:
-    """
-    Функция принимает DataFrame со всеми транзакциями и возвращает DataFrame с транзакциями за текущий месяц.
-    Args:
-        df (DataFrame): Исходный DataFrame с транзакциями.
-        current_date (Union[str, datetime, None]): Текущая дата для определения текущего месяца.
-    Returns:
-        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
-    """
-    # Если current_date не передана, используем текущую дату
-    if current_date is None:
-        current_date_dt = datetime.now()
-    elif isinstance(current_date, str):
-        # Преобразование строки в datetime
-        parsed_date = pd.to_datetime(current_date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
-        if pd.isnull(parsed_date):
-            raise ValueError(f"Передана некорректная дата: {current_date}")
-        current_date_dt = parsed_date  # Преобразование успешно
-    elif isinstance(current_date, datetime):
-        current_date_dt = current_date
-    else:
-        raise ValueError(
-            "Аргумент (current_date) должен быть строкой в формате 'YYYY-MM-DD HH:MM:SS', объектом datetime или None"
-        )
-
-    # Преобразуем столбец "Дата операции" в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
-
-    # Извлекаем текущий месяц и год
-    current_month = current_date_dt.month
-    current_year = current_date_dt.year
-    # Фильтруем DataFrame по текущему месяцу и году
-    current_month_df = filter_dataframe(
-        df,
-        {
-            "Дата операции": lambda dates: (dates <= current_date_dt)
-            & (dates.dt.year == current_year)
-            & (dates.dt.month == current_month)
-        },
-    )
-    return current_month_df
 
 
 def sum_by_category(df: DataFrame) -> DataFrame:
@@ -112,13 +68,12 @@ def get_top_5(df: DataFrame) -> DataFrame:
     Функция возвращает Топ-5 по сумме транзакции
     """
     df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
+
     return df_top_five[["Дата операции", "Сумма операции с округлением", "Категория", "Описание"]].head(5)
 
 
 @save_to_file()
-def views(
-        date: str
-) -> str:
+def views(date: str) -> str:
     """
     Функция, принимающая на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
      и возвращающую JSON-ответ со следующими данными:
@@ -223,4 +178,4 @@ def views(
 
 
 if __name__ == "__main__":
-    print(main("2021-02-09 17:05:48"))
+    print(views("2021-02-09 17:05:48"))
