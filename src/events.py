@@ -143,16 +143,11 @@ def events(
         stock_prices_formatted = []
 
     # Получение курсов валют
-    try:
-        rates = get_exchange_rates(currency)
-        loger.info("Запрос курса валют")
-        rub_rates = convert_to_rub(rates)
-        currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
-        loger.info("Получен курс валют")
-    except Exception as e:
-        currency_rates_formatted = []
-        loger.warning(f"Ошибка получения курсов валют: {e}")
-
+    rates = get_exchange_rates(currency)
+    loger.info("Запрос курса валют")
+    rub_rates = convert_to_rub(rates)
+    currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
+    loger.info("Получены курсы валют")
     result = {
         "expenses": {
             "total_amount": total_expenses,
@@ -168,4 +163,4 @@ def events(
 
 
 if __name__ == "__main__":
-    print(events("2018-06-10 22:22:22", "W"))
+    print(events("2018-06-10 22:22:22", "ALL"))
