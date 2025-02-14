@@ -1,5 +1,4 @@
 import os
-from unittest.mock import patch
 
 import finnhub  # type: ignore
 import requests
