@@ -122,7 +122,7 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
 
     parsed_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
     if pd.isna(parsed_date):
-        raise ValueError("Ошибка: передана некорректная дата!")
+        raise ValueError("Ошибка: передана некорректная дата! Запустите с корректными параметрами.")
     # Преобразуем столбец "Дата операции" в datetime
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
@@ -160,4 +160,7 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
             df,
             {"Дата операции": lambda dates: (dates <= parsed_date)},
         )
+    if "Номер карты" in current_period_df.columns:
+        current_period_df["Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
+
     return current_period_df
