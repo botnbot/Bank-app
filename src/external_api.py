@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import finnhub  # type: ignore
 import requests
@@ -63,18 +64,17 @@ def convert_to_rub(
         rates: dict,
         base_currency: str = "RUB"
 ) -> dict:
-    """Пересчитывает курсы валют в значения относительно рубля.
+    """
+    Пересчитывает курсы валют в значения относительно рубля.
     Принимает на вход словарь с курсами валют и код валюты, на которую надо произвести пересчет курсов.
     Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты.
     """
     rub_rate = rates.get(base_currency)
     if not isinstance(rub_rate, (int, float)):
         raise ValueError("Курс рубля не передан, невозможно вычислить курсы к RUB")
-
-    # Пересчет курсов валют к рублю
     rates_in_rub = {
         currency: (round(rub_rate / rate, 2) if isinstance(rate, (int, float)) else "N/A")
         for currency, rate in rates.items()
-        if currency != base_currency  # Исключаем базовую валюту
+        if currency != base_currency
     }
     return rates_in_rub
