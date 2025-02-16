@@ -32,10 +32,7 @@ except PermissionError as e:
     loger.error(f"Ошибка доступа к файлу логов: {e}")
 
 
-def events(
-        date: str,
-        period_type: str = "M"
-) -> str:
+def events(date: str, period_type: str = "M") -> str:
     """Главная функция для страницы events.
     Args:
         date (str): строка с датой
@@ -129,26 +126,31 @@ def events(
     loger.info("Данные проанализированы")
 
     # Получение курсов акций
+    stock_prices_formatted = []
+    loger.info("Запрос курса акций.")
     try:
         stock_prices = get_stock_prices(stocks)
-        loger.info("Запрос курса акций")
-        stock_prices_formatted = []
         for stock, price in stock_prices.items():
             if isinstance(price, str) and "Ошибка API" in price:
-                loger.warning(f"Ошибка API при получении курса акций для {stock}: {price}")
+                loger.warning(f"{stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": price})
             else:
                 stock_prices_formatted.append({"stock": stock, "price": price})
-
     except Exception as e:
         loger.error(f"Неизвестная ошибка при получении курсов акций: {repr(e)}")
-        stock_prices_formatted = []
 
     # Получение курсов валют
-    rates = get_exchange_rates(currency)
-    loger.info("Запрос курса валют")
-    rub_rates = convert_to_rub(rates)
-    currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
-    loger.info("Получены курсы валют")
+    try:
+        rates = get_exchange_rates(currency)
+        rub_rates = convert_to_rub(rates)
+        currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
+        loger.info(f"Получены курсы валют {currency_rates_formatted[0].keys}")
+    except Exception as e:
+        currency_rates_formatted = []
+        for cur in currency:
+            loger.warning(f"{cur}: {e}")
+            currency_rates_formatted.append({"currency": cur, "rate": str(e)})
+
     result = {
         "expenses": {
             "total_amount": total_expenses,
@@ -164,4 +166,4 @@ def events(
 
 
 if __name__ == "__main__":
-    print(events("2018-05-10 22:22:22", "ALL"))
+    print(events("2018-02-10 22:22:22", "ALL"))
