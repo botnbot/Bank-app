@@ -1,14 +1,12 @@
 import json
 import logging
 from typing import Generator
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
-from pandas import DataFrame
-from pandas.testing import assert_frame_equal
 
-from src.views import get_top_5, get_total_spending, sum_by_category, views
+from src.views import views
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -20,247 +18,113 @@ def disable_logging() -> Generator:
 
 
 @pytest.fixture
-def sample_dataframe() -> DataFrame:
-    """Фикстура для создания тестового DataFrame с транзакциями."""
-    data = {
-        "Дата операции": ["2025-01-10", "2025-01-20", "2025-02-05", "2025-01-25"],
-        "Сумма": [100, 200, 300, 400],
-    }
-    df = pd.DataFrame(data)
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"])
-    return df
+def mock_views_env() -> Generator:
+    mock_settings = json.dumps({
+        "user_stocks": ["AAPL"],
+        "user_currencies": ["USD", "EUR"]
+    })
+
+    with (
+        patch("builtins.open", mock_open(read_data=mock_settings)),
+        patch("pandas.read_excel") as mock_read_excel,
+        patch("requests.get") as mock_requests_get,
+    ):
+        # Подготовка данных
+        mock_df = pd.DataFrame(
+            {
+                "Дата операции": ["2024-02-01 10:00:00", "2024-02-05 10:30:00"],
+                "Сумма операции с округлением": [10, 999],
+                "Кэшбэк": [6, None],
+                "Категория": ["Продукты", "Зарплата"],
+                "Номер карты": ["12588", "987654"],
+                "Описание": ["Ozon.ru", "Магнит"]
+            }
+        )
+        mock_df["Дата операции"] = pd.to_datetime(mock_df["Дата операции"])
+        mock_read_excel.return_value = mock_df  # Подменяем чтение Excel-файла
+        yield
+
+    mock_requests_get.return_value.json.return_value = {"success": True}  # API должен возвращать данные
 
 
-# def test_get_operations_current_month_default_date(sample_dataframe: DataFrame) -> None:
-#     """Тест: фильтрация транзакций за текущий месяц (текущая дата по умолчанию)."""
-#     current_date = "2025-01-27 00:00:00"
-#     filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
-#
-#     expected_data = {
-#         "Дата операции": ["2025-01-10", "2025-01-20", "2025-01-25"],
-#         "Сумма": [100, 200, 400],
-#     }
-#     expected_df = pd.DataFrame(expected_data)
-#     expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
-#
-#     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
-#
-#
-# def test_get_operations_current_month_string_date(sample_dataframe: DataFrame) -> None:
-#     """Тест: фильтрация транзакций за текущий месяц (строка в формате даты)."""
-#     current_date = "2025-01-27 00:00:00"
-#     filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
-#     expected_data = {
-#         "Дата операции": ["2025-01-10", "2025-01-20", "2025-01-25"],
-#         "Сумма": [100, 200, 400],
-#     }
-#     expected_df = pd.DataFrame(expected_data)
-#     expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
-#     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
-#
-#
-# def test_get_operations_current_month_datetime_date(sample_dataframe: DataFrame) -> None:
-#     """Тест: фильтрация транзакций за текущий месяц (объект datetime)."""
-#     current_date = datetime(2025, 1, 15, 00, 00, 00)
-#     filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
-#     expected_data = {
-#         "Дата операции": ["2025-01-10"],
-#         "Сумма": [100],
-#     }
-#     expected_df = pd.DataFrame(expected_data)
-#     expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
-#
-#     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
-#
-#
-# def test_get_operations_current_month_cutoff_date(sample_dataframe: DataFrame) -> None:
-#     """Тест: отсечение транзакций, произошедших после переданной даты."""
-#     current_date = datetime(2025, 1, 20, 00, 00, 00)
-#     filtered_df = get_operations_for_current_month(sample_dataframe, current_date)
-#
-#     expected_data = {
-#         "Дата операции": ["2025-01-10", "2025-01-20"],
-#         "Сумма": [100, 200],
-#     }
-#     expected_df = pd.DataFrame(expected_data)
-#     expected_df["Дата операции"] = pd.to_datetime(expected_df["Дата операции"])
-#
-#     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df)
-#
-#
-# def test_get_operations_current_month_no_current_date(sample_dataframe: DataFrame) -> None:
-#     """Тест: передача аргумента current_date=None."""
-#     filtered_df = get_operations_for_current_month(sample_dataframe, None)
-#     # Проверяем, что фильтр отработал для текущего месяца (текущая дата - дата выполнения теста).
-#     current_date = datetime.now()
-#     current_month = current_date.month
-#     current_year = current_date.year
-#
-#     expected_df = sample_dataframe[
-#         (pd.to_datetime(sample_dataframe["Дата операции"]).dt.year == current_year)
-#         & (pd.to_datetime(sample_dataframe["Дата операции"]).dt.month == current_month)
-#         ]
-#     assert_frame_equal(filtered_df.reset_index(drop=True), expected_df.reset_index(drop=True))
-#
-#
-# def test_invalid_date_format(sample_dataframe: DataFrame) -> None:
-#     """Тест: передача некорректной даты (строка)."""
-#     with pytest.raises(ValueError, match="Передана некорректная дата: invalid-date"):
-#         get_operations_for_current_month(sample_dataframe, "invalid-date")
-#
-#
-# def test_invalid_date_type(sample_dataframe: DataFrame) -> None:
-#     """Тест: передача недопустимого типа данных в current_date."""
-#     with pytest.raises(ValueError, match="Аргумент .* должен быть строкой .* объектом datetime или None"):
-#         get_operations_for_current_month(sample_dataframe, 123)
-#
-#
-# def test_filter_empty_dataframe() -> None:
-#     """Тест: передача пустого DataFrame."""
-#     df = pd.DataFrame(columns=["Дата операции", "Сумма"])
-#     filtered_df = get_operations_for_current_month(df, "2025-01-27 00:00:00")
-#     assert filtered_df.empty
+@pytest.mark.parametrize(
+    "expected_keys",
+    [
+        (["greeting", "cards", "currency_rates", "stock_prices", "top_transactions"]),
+    ],
+)
+def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
+    """
+    Тест успешного выполнения функции views().
+    """
+    with (
+        patch("src.views.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
+        patch("src.views.convert_to_rub", return_value={"USD": 90}) as mock_convert_to_rub,
+    ):
+        result_json = views("2024-02-05 12:00:00")
+        result = json.loads(result_json)
+
+        # Проверяем структуру курсов валют
+        assert result["currency_rates"] == [{"currency": "USD", "rate": 90}]
+        mock_get_stock_prices.assert_called_once()
+
+        # Проверяем структуру курсов акций
+        assert result["stock_prices"] == [{"stock": "AAPL", "price": 150}]
+        mock_convert_to_rub.assert_called_once()
+
+        # Проверяем, что все ключи есть в результате
+        assert all(key in result for key in expected_keys)
+
+def test_views_currency_exception():
+    """Тест обработки исключения при получении курсов валют."""
+    test_date = "2025-01-01 22:22:22"
+    test_currency = ["USD", "EUR"]
+
+    # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
+    with patch("src.views.get_exchange_rates", side_effect=Exception("API error")):
+        with patch("src.views.convert_to_rub", return_value={}):
+            # Вызываем функцию
+            result_json = views(test_date)
+            result = json.loads(result_json)  # Преобразуем JSON в Python-объект
+
+            # Проверяем, что список `currency_rates` содержит ошибки
+            expected_rates = [{"currency": cur, "rate": "API error"} for cur in test_currency]
+            assert result["currency_rates"] == expected_rates
 
 
-def test_sum_by_category_succes() -> None:
-    """Тест успешной группировки по категориям"""
-    data = {
-        "Категория": ["первая", "вторая", "третья", "первая"],
-        "Сумма операции с округлением": [100, 200, 300, 400],
-    }
-    df = pd.DataFrame(data)
-    result = sum_by_category(df)
 
-    expected_data = {"Категория": ["вторая", "первая", "третья"], "Сумма операции с округлением": [200, 500, 300]}
-    expected_result = pd.DataFrame(expected_data)
-
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-def test_get_total_spending() -> None:
-    """Тест успешной группировки по номерам карт"""
-    data = {
-        "Номер карты": ["1111", "2222", "4444", "2222"],
-        "Сумма операции с округлением": [100, 200, 300, 400],
-        "Кэшбэк": [1, 2, 4, 5],
-    }
-    df = pd.DataFrame(data)
-
-    result = get_total_spending(df)
-    expected_data = {
-        "Номер карты": ["1111", "2222", "4444"],
-        "Сумма операции с округлением": [100, 600, 300],
-        "Кэшбэк": [1, 7, 4],
-    }
-    expected_result = pd.DataFrame(expected_data)
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-def test_get_top_5() -> None:
-    """Тест фильтрации Топ-5 транзакций"""
-    data = {
-        "Дата операции": [
-            "2021-25-06",
-            "2021-24-06",
-            "2021-20-06",
-            "2020-25-06",
-            "2018-25-06",
-            "2020-25-08",
-            "2019-25-08",
-        ],
-        "Сумма операции с округлением": [1600, 16000, 20, 50, 100, 1000, 47],
-        "Категория": ["1", "2", "3", "4", "5", "6", "7"],
-        "Описание": ["Колхоз", "Ozon.ru", "Константин Л.", "Константин Л.", "Ситидрайв", "РЖД", "Mouse Tail"],
-    }
-    df = pd.DataFrame(data)
-    result = get_top_5(df)
-
-    expected_data = {
-        "Дата операции": ["2021-24-06", "2021-25-06", "2020-25-08", "2018-25-06", "2020-25-06"],
-        "Сумма операции с округлением": [16000, 1600, 1000, 100, 50],
-        "Категория": ["2", "1", "6", "5", "4"],
-        "Описание": ["Ozon.ru", "Колхоз", "РЖД", "Ситидрайв", "Константин Л."],
-    }
-    expected_result = pd.DataFrame(expected_data)
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-@patch("src.views.get_data")
-@patch("src.views.get_df_for_current_period")
-@patch("src.views.get_total_spending")
-@patch("src.views.get_top_5")
 @patch("src.views.get_stock_prices")
 @patch("src.views.get_exchange_rates")
-@patch("src.views.convert_to_rub")
-def test_views(
-    mock_convert_to_rub: Mock,
-    mock_get_exchange_rates: Mock,
-    mock_get_stock_prices: Mock,
-    mock_get_top_5: Mock,
-    mock_get_total_spending: Mock,
-    mock_get_df_for_current_period: Mock,
-    mock_get_data: Mock,
-) -> None:
+def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
     """
-    Tестирует основную функцию views() и проверяет правильность JSON-ответа.
+    Тест продолжения работы функции после возникновения исключения
     """
+    # Настраиваем моки
+    mock_get_stock_prices.return_value = {
+        "AAPL": 150,
+        "GOOGL": 2800,
+        "TSLA": "Ошибка API",  # Эмулируем ошибку
+    }
+    mock_get_exchange_rates.return_value = {
+        "EUR": 1.0,
+        "UU": "N/A",  # Эмулируем ошибку
+        "RUB": 110,
+    }
 
-    df = pd.DataFrame(
-        {
-            "Дата операции": ["2024-01-10 12:00:00", "2024-01-15 15:30:00"],
-            "Номер карты": ["1234567890123456", "9876543210987654"],
-            "Сумма операции с округлением": [1000, 2000],
-            "Кэшбэк": [10, 20],
-            "Категория": ["Продукты", "Транспорт"],
-            "Описание": ["Покупка еды", "Проезд"],
-        }
-    )
-    # Передаем DataFrame вместо Mock
-    mock_get_data.return_value = df
-    mock_get_df_for_current_period.return_value = df
-    mock_get_total_spending.return_value = pd.DataFrame(
-        [{"Номер карты": "1234567890123456", "Сумма операции с округлением": 1000, "Кэшбэк": 10}]
-    )
+    # Вызываем функцию events
+    result_json = views("2024-02-05 12:00:00")
+    result = json.loads(result_json)
 
-    mock_get_top_5.return_value = df.to_dict(orient="records")
+    # Проверяем, что функция корректно обработала ошибки и вернула данные
+    assert result["stock_prices"] == [
+        {"stock": "AAPL", "price": 150},
+        {"stock": "GOOGL", "price": 2800},
+        {"stock": "TSLA", "price": "Ошибка API"},  # Ожидаем, что ошибка будет в результате
+    ]
+    assert result["currency_rates"] == [
+        {"currency": "EUR", "rate": 110},
+        {"currency": "UU", "rate": "N/A"},  # Ожидаем, что ошибка будет в результате
+    ]
 
-    mock_get_stock_prices.return_value = {"AAPL": 150.0}
-    # mock_get_exchange_rates.return_value = {"USD": 80.0}
-    # mock_convert_to_rub.return_value = {"USD": 8.0}
-
-    response = views("2024-01-15 12:00:00")
-    result = json.loads(response)
-    print(result)
-
-    # Проверяем, что результат - это JSON
-    assert isinstance(result, dict)
-
-    # Выводим результат для отладки
-    print(json.dumps(result, indent=4, ensure_ascii=False))
-
-    assert "greeting" in result
-    assert "cards" in result
-    assert "top_transactions" in result
-    assert "currency_rates" in result
-    assert "stock_prices" in result
-
-    # Дополнительные проверки структуры JSON
-
-    assert isinstance(result["cards"], list)
-    assert isinstance(result["top_transactions"], list)
-    assert isinstance(result["currency_rates"], list)
-    if result["currency_rates"]:
-        assert (rate["currency"] == "USD" and rate["rate"] == 90 for rate in result["currency_rates"])
-    assert isinstance(result["stock_prices"], list)
-    if result["stock_prices"]:
-        assert result["stock_prices"][0]["stock"] == "AAPL"
-        assert result["stock_prices"][0]["price"] == 150
-
-    # Проверка, что у карт есть все нужные поля
-    assert all("last_digits" in card for card in result["cards"])
-    assert all("total_spent" in card for card in result["cards"])
-    assert all("cashback" in card for card in result["cards"])
-
-    assert result["cards"][0]["last_digits"] == "3456"
-    assert result["cards"][0]["total_spent"] == 1000
-    assert result["cards"][0]["cashback"] == 10
+    # Дополнительная проверка: убедимся, что функция не выбросила исключение
+    assert "error" not in result  # Если функция возвращает ошибки в JSON, проверяем их отсутствие
