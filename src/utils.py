@@ -117,7 +117,7 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
         DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
 
     Raises:
-        ValueError: Если в DataFrame отсутствует столбец "Дата операции".
+        ValueError: Если в DataFrame отсутствует столбец "Дата операции" или его не удается преобразовать в DateTime.
     """
 
     parsed_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
@@ -161,6 +161,6 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
             {"Дата операции": lambda dates: (dates <= parsed_date)},
         )
     if "Номер карты" in current_period_df.columns:
-        current_period_df["Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
+        current_period_df.loc[:, "Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
 
     return current_period_df
