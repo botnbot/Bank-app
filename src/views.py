@@ -54,7 +54,7 @@ def sum_by_category(df: DataFrame) -> DataFrame:
 
 def get_total_spending(df: DataFrame) -> Any:
     """
-    Функция возвращает сумму всех трат по каждой карте
+    Функция осуществляет группировку сумм всех трат по каждой карте
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
@@ -66,6 +66,10 @@ def get_total_spending(df: DataFrame) -> Any:
 def get_top_5(df: DataFrame) -> DataFrame:
     """
     Функция возвращает Топ-5 по сумме транзакции
+    Args:
+        df: исходный DataFrame с транзакциями
+    Returns:
+        отфильтрованный DataFrame, содержащий топ-5 транзакций
     """
     df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
 
@@ -75,15 +79,18 @@ def get_top_5(df: DataFrame) -> DataFrame:
 @save_to_file()
 def views(date: str) -> str:
     """
-    Функция, принимающая на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
-     и возвращающую JSON-ответ со следующими данными:
-     Приветствие в формате "???", где ??? — «Доброе утро» / «Добрый день» / «Добрый вечер» / «Доброй ночи»
-      в зависимости от текущего времени.
-      По каждой карте:
-      последние 4 цифры карты, общая сумма расходов, кешбэк (1 рубль на каждые 100 рублей).
-      Топ-5 транзакции по сумме платежа.
-      Курс валют.
-      Стоимость акций из S&P 500.
+    Функция формирует данные для страницы ***views***
+    Args:
+        date : строка с датой и временем в формате YYYY-MM-DD HH:MM:SS
+    Returns:
+        str : JSON-строка, содержащая следующие данные:
+         Приветствие в формате "???", где ??? — «Доброе утро» / «Добрый день» / «Добрый вечер» / «Доброй ночи»
+         в зависимости от текущего времени.
+         По каждой карте:
+             последние 4 цифры карты, общая сумма расходов, кешбэк (1 рубль на каждые 100 рублей).
+             Топ-5 транзакции по сумме платежа.
+         Курс валют.
+         Стоимость акций из S&P 500.
     """
 
     loger.info("Запуск")
@@ -140,31 +147,39 @@ def views(date: str) -> str:
     loger.info("Пользовательские настройки получены")
 
     # Получение курсов акций
+    stock_prices_formatted = []
+    loger.info("Запрос курса акций.")
     try:
         stock_prices = get_stock_prices(stocks)
-        loger.info("Запрос курса акций")
-
-        stock_prices_formatted = []
         for stock, price in stock_prices.items():
             if isinstance(price, str) and "Ошибка API" in price:
-                loger.warning(f"Ошибка API при получении курса акций для {stock}: {price}")
+                loger.warning(f"{stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": price})
             else:
                 stock_prices_formatted.append({"stock": stock, "price": price})
-
     except Exception as e:
         loger.error(f"Неизвестная ошибка при получении курсов акций: {repr(e)}")
-        stock_prices_formatted = []
 
     # Получение курсов валют
+    loger.info("Запрос курса валют")
     try:
         rates = get_exchange_rates(currency)
-        loger.info("Запрос курса валют")
         rub_rates = convert_to_rub(rates)
-        currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
+
+        # Фильтрация корректных валют и логирование некорректных значений
+        currency_rates_formatted = []
+        for cur, rate in rub_rates.items():
+            if isinstance(cur, str) and cur.isalpha():
+                currency_rates_formatted.append({"currency": cur, "rate": rate})
+            else:
+                loger.warning(f"Пропущен некорректный код валюты: {cur}")
+
         loger.info("Получен курс валют")
     except Exception as e:
-        currency_rates_formatted = []
-        loger.warning(f"Ошибка получения курсов валют: {e}")
+        currency_rates_formatted = [
+            {"currency": cur, "rate": str(e)} for cur in currency if isinstance(cur, str) and cur.isalpha()
+        ]
+        loger.error(f"Ошибка при получении курсов валют: {e}")
 
     result = {
         "greeting": greetings(),
