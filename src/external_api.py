@@ -33,7 +33,7 @@ def get_stock_prices(
         except ValueError as e:
             prices[symbol] = f"Ошибка API {e}"
         except Exception as e:
-            prices[symbol] = str (e)
+            prices[symbol] = str(e)
     return prices
 
 
@@ -79,7 +79,7 @@ def convert_to_rub(
     Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты.
     Args:
         rates: dict словарь с курсами валют
-        base_currency: str код базовой валюты, на которую надо произвести перерасчет. (должна быть в переданном словаре)
+        base_currency: str код базовой валюты, на которую надо произвести перерасчет (должна быть в переданном словаре)
         По умолчанию base_currency = "RUB"
     Returns:
         словарь с перерасчитанными курсами

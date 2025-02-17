@@ -146,8 +146,9 @@ def events(date: str, period_type: str = "M") -> str:
         currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
         loger.info(f"Получены курсы валют {currency_rates_formatted[0].keys}")
     except Exception as e:
-        currency_rates_formatted = [{"currency": cur, "rate": str(e)} for cur in currency if
-                                    isinstance(cur, str) and cur.isalpha()]
+        currency_rates_formatted = [
+            {"currency": cur, "rate": str(e)} for cur in currency if isinstance(cur, str) and cur.isalpha()
+        ]
 
     result = {
         "expenses": {
