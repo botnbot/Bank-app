@@ -4,7 +4,64 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from pandas import DataFrame
+from pandas._testing import assert_frame_equal
 
+from src.utils import filter_dataframe, get_data, get_date, get_df_for_current_period, greetings
+
+
+@pytest.mark.parametrize(
+    "user_input, expected",
+    [
+        ("2019-05-15 14:30:00", "2019-05-15 14:30:00"),  # Корректный ввод
+        ("2021-12-31 23:59:59", "2021-12-31 23:59:59"),  # Граничное значение
+    ],
+)
+def test_get_date_valid_input(user_input: str, expected: str) -> None:
+    with patch("builtins.input", return_value=user_input):
+        assert get_date() == expected
+
+
+def test_get_date_empty_input() -> None:
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with patch("builtins.input", return_value=""):
+        assert get_date()[:16] == now[:16]
+
+
+@pytest.mark.parametrize(
+    "invalid_input",
+    [
+        "15-05-2019 14:30:00",  # Неправильный формат (дд-мм-гггг)
+        "2019/05/15 14:30",  # Отсутствуют секунды
+        "2019-13-01 12:00:00",  # Неверный месяц
+        "2019-05-32 12:00:00",  # Неверный день
+        "2019-02-29 12:00:00",  # 29 февраля в невисокосный год
+        "abcd-ef-gh ij:kl:mn",  # Полностью некорректный ввод
+    ],
+)
+def test_get_date_invalid_input(invalid_input: str) -> None:
+    with patch("builtins.input", side_effect=[invalid_input, "2020-01-01 12:00:00"]):
+        assert get_date() == "2020-01-01 12:00:00"  # После ошибки ввод корректной даты
+
+
+@pytest.fixture()
+def df_fix() -> DataFrame:
+    """Фикстура подставного DataFrame"""
+    df = pd.DataFrame(
+        {
+            "Категории": ["Продукты", "Продукты", "Напитки", "Бонусы", "Покупки", "Просто", "Книги"],
+            "Дата операции": [
+                "01.01.2018 00:00:00",
+                "02.01.2018 00:00:00",
+                "08.01.2018 00:00:00",
+                "14.01.2018 00:00:00",
+                "15.02.2018 00:00:00",
+                "28.01.2018 00:00:00",
+                "10.05.2019 00:00:00",
+            ],
+        }
+    )
+    return df
 from src.utils import filter_dataframe, get_data, get_date, greetings
 
 

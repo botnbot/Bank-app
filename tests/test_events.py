@@ -6,7 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 import pandas as pd
 import pytest
 
-from src.views import views
+from src.events import events
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -18,7 +18,7 @@ def disable_logging() -> Generator:
 
 
 @pytest.fixture
-def mock_views_env() -> Generator:
+def mock_events_env() -> Generator:
     mock_settings = json.dumps({
         "user_stocks": ["AAPL"],
         "user_currencies": ["USD", "EUR"]
@@ -33,11 +33,8 @@ def mock_views_env() -> Generator:
         mock_df = pd.DataFrame(
             {
                 "Дата операции": ["2024-02-01 10:00:00", "2024-02-05 10:30:00"],
-                "Сумма операции с округлением": [10, 999],
-                "Кэшбэк": [6, None],
+                "Сумма платежа": [-1500, 2000],
                 "Категория": ["Продукты", "Зарплата"],
-                "Номер карты": ["12588", "987654"],
-                "Описание": ["Ozon.ru", "Магнит"]
             }
         )
         mock_df["Дата операции"] = pd.to_datetime(mock_df["Дата операции"])
@@ -50,22 +47,22 @@ def mock_views_env() -> Generator:
 @pytest.mark.parametrize(
     "expected_keys",
     [
-        (["greeting", "cards", "currency_rates", "stock_prices", "top_transactions"]),
+        (["expenses", "income", "currency_rates", "stock_prices"]),
     ],
 )
-def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
+def test_events_success(mock_events_env: Mock, expected_keys: list) -> None:
     """
-    Тест успешного выполнения функции views().
+    Тест успешного выполнения функции events().
     """
     with (
-        patch("src.views.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
-        patch("src.views.convert_to_rub", return_value={"USD": 90}) as mock_convert_to_rub,
+        patch("src.events.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
+        patch("src.events.convert_to_rub", return_value={"USD": 90, "EUR": 100}) as mock_convert_to_rub,
     ):
-        result_json = views("2024-02-05 12:00:00")
+        result_json = events("2024-02-05 12:00:00", "W")
         result = json.loads(result_json)
 
         # Проверяем структуру курсов валют
-        assert result["currency_rates"] == [{"currency": "USD", "rate": 90}]
+        assert result["currency_rates"] == [{"currency": "USD", "rate": 90}, {"currency": "EUR", "rate": 100}]
         mock_get_stock_prices.assert_called_once()
 
         # Проверяем структуру курсов акций
@@ -75,16 +72,17 @@ def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
         # Проверяем, что все ключи есть в результате
         assert all(key in result for key in expected_keys)
 
-def test_views_currency_exception():
+
+def test_events_currency_exception():
     """Тест обработки исключения при получении курсов валют."""
     test_date = "2025-01-01 22:22:22"
     test_currency = ["USD", "EUR"]
 
     # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
-    with patch("src.views.get_exchange_rates", side_effect=Exception("API error")):
-        with patch("src.views.convert_to_rub", return_value={}):
+    with patch("src.events.get_exchange_rates", side_effect=Exception("API error")):
+        with patch("src.events.convert_to_rub", return_value={}):
             # Вызываем функцию
-            result_json = views(test_date)
+            result_json = events(test_date, period_type="M")
             result = json.loads(result_json)  # Преобразуем JSON в Python-объект
 
             # Проверяем, что список `currency_rates` содержит ошибки
@@ -92,10 +90,9 @@ def test_views_currency_exception():
             assert result["currency_rates"] == expected_rates
 
 
-
-@patch("src.views.get_stock_prices")
-@patch("src.views.get_exchange_rates")
-def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
+@patch("src.events.get_stock_prices")
+@patch("src.events.get_exchange_rates")
+def test_events_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
     """
     Тест продолжения работы функции после возникновения исключения
     """
@@ -112,7 +109,7 @@ def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_st
     }
 
     # Вызываем функцию events
-    result_json = views("2024-02-05 12:00:00")
+    result_json = events("2024-02-05 12:00:00")
     result = json.loads(result_json)
 
     # Проверяем, что функция корректно обработала ошибки и вернула данные

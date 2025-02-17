@@ -1,8 +1,9 @@
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
+from pandas import DataFrame
 
 
 def greetings() -> str:
@@ -69,7 +70,7 @@ def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "
     return filtered_df
 
 
-def get_date() -> Optional[str]:
+def get_date() -> str:
     """
     Функция, запрашивающая у пользователя дату для передачи в функцию.
     Возвращает дату в формате "YYYY-MM-DD HH:MM:SS".
@@ -77,20 +78,89 @@ def get_date() -> Optional[str]:
     """
     while True:
         try:
-            date_input: Optional[str] = input(
+            date_input: str = input(
                 "Введите строку с датой и временем в формате YYYY-MM-DD HH:MM:SS "
                 "в диапазоне с 2018-01-01 по 2021-12-31, "
                 "или нажмите Enter для использования текущей даты: "
             ).strip()
 
-            # Проверяем, если ввод пустой
             if not date_input:
-                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем текущую дату
+                return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Пробуем преобразовать введённую дату
             date = datetime.strptime(date_input, "%Y-%m-%d %H:%M:%S")
+            return date.strftime("%Y-%m-%d %H:%M:%S")
 
-            break
         except ValueError as e:
             print(f"Не удалось получить дату: {e}. Попробуйте снова.")
-    return date.strftime("%Y-%m-%d %H:%M:%S")  # Возвращаем дату в нужном формате
+
+
+def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") -> Any:
+    """
+    Возвращает транзакции за текущий период.
+
+    Функция принимает DataFrame со всеми транзакциями и фильтрует его, оставляя только операции,
+    которые произошли в пределах заданного периода.
+
+    Args:
+        df (DataFrame): Исходный DataFrame с транзакциями. Должен содержать столбец "Дата операции".
+        date (str): Строка с датой и временем в формате YYYY-MM-DD HH:MM:SS для определения заданного периода.
+        Если не передана, используется текущая дата.
+        period_type (str): Диапазон данных. По умолчанию диапазон равен одному месяцу
+         (с начала месяца, на который выпадает дата, по саму дату).
+         Возможные значения параметра:
+         W — неделя, на которую приходится дата;
+         M — месяц, на который приходится дата;
+         Y — год, на который приходится дата;
+         ALL — все данные до указанной даты.
+
+    Returns:
+        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
+
+    Raises:
+        ValueError: Если в DataFrame отсутствует столбец "Дата операции" или его не удается преобразовать в DateTime.
+    """
+
+    parsed_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
+    if pd.isna(parsed_date):
+        raise ValueError("Ошибка: передана некорректная дата! Запустите с корректными параметрами.")
+    # Преобразуем столбец "Дата операции" в datetime
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
+
+    # Извлекаем текущую неделю, месяц и год
+    current_week = parsed_date.isocalendar().week
+    current_month = parsed_date.month
+    current_year = parsed_date.year
+    # Получение операций за текущий период
+    if period_type == "W":
+
+        current_period_df = filter_dataframe(
+            df,
+            {
+                "Дата операции": lambda dates: (dates <= parsed_date)
+                & (dates.dt.year == current_year)
+                & (dates.dt.isocalendar().week == current_week)
+            },
+        )
+    elif period_type == "M":
+        current_period_df = filter_dataframe(
+            df,
+            {
+                "Дата операции": lambda dates: (dates <= parsed_date)
+                & (dates.dt.year == current_year)
+                & (dates.dt.month == current_month)
+            },
+        )
+    elif period_type == "Y":
+        current_period_df = filter_dataframe(
+            df,
+            {"Дата операции": lambda dates: (dates <= parsed_date) & (dates.dt.year == current_year)},
+        )
+    else:
+        current_period_df = filter_dataframe(
+            df,
+            {"Дата операции": lambda dates: (dates <= parsed_date)},
+        )
+    if "Номер карты" in current_period_df.columns:
+        current_period_df.loc[:, "Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
+
+    return current_period_df

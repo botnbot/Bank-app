@@ -1,8 +1,6 @@
-import logging
 import os.path
 import re
-from logging import DEBUG, WARNING, Formatter, getLogger
-from typing import Any, Union
+from typing import Any
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
@@ -10,7 +8,7 @@ from src.utils import filter_dataframe, get_data
 
 
 @save_to_file()
-def find_money_transfers_from_individuals() -> Union[str, Any]:
+def find_money_transfers_from_individuals(data_path: str) -> Any:
     """Функция, возвращающая JSON с переводами только физическим лицам.
      Args:
         data_path (str): путь к исходному DataFrame.
