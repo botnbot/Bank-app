@@ -62,6 +62,7 @@ def df_fix() -> DataFrame:
         }
     )
     return df
+from src.utils import filter_dataframe, get_data, get_date, greetings
 
 
 @pytest.mark.parametrize(
@@ -265,103 +266,26 @@ def test_filter_dataframe_missing_column() -> None:
         filter_dataframe(df, conditions)
 
 
-def test_get_df_for_current_period_week(df_fix: DataFrame) -> None:
-    df = df_fix
-    # Преобразуем даты в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+@pytest.mark.parametrize(
+    "mock_input, expected_output",
+    [
+        ("", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),  # Пустой ввод → текущая дата
+        ("2021-12-31 23:59:59", "2021-12-31 23:59:59"),  # Корректная дата
+    ],
+)
+@patch("builtins.input")  # Мокаем `input()`
+def test_get_date(mock_input_function: Mock, mock_input: Mock, expected_output: Mock) -> None:
+    """Тестируем разные сценарии работы get_date()."""
 
-    result = get_df_for_current_period("2018-01-14 00:00:00", df, "W")
+    mock_input_function.side_effect = [mock_input]  # Симулируем ввод пользователя
+    result = get_date()  # Вызываем тестируемую функцию
 
-    expected_result = pd.DataFrame(
-        {
-            "Категории": ["Напитки", "Бонусы"],
-            "Дата операции": [
-                "08.01.2018 00:00:00",
-                "14.01.2018 00:00:00",
-            ],
-        }
-    )
-    # Преобразуем даты в datetime
-    expected_result["Дата операции"] = pd.to_datetime(expected_result["Дата операции"], dayfirst=True)
-
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+    assert result == expected_output  # Проверяем корректность
 
 
-def test_get_df_for_current_period_month(df_fix: DataFrame) -> None:
-    df = df_fix
-    # Преобразуем даты в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+@patch("builtins.input", side_effect=["invalid date", "2021-12-31 23:59:59"])  # 1-я попытка неверная, 2-я успешная
+def test_get_date_invalid_retry(mock_input_function: Mock) -> None:
+    """Тестируем сценарий, когда пользователь вводит некорректную дату и исправляет её."""
 
-    result = get_df_for_current_period("2018-02-16 00:00:00", df, "M")
-
-    expected_result = pd.DataFrame({"Категории": ["Покупки"], "Дата операции": ["15.02.2018 00:00:00"]})
-    # Преобразуем даты в datetime
-    expected_result["Дата операции"] = pd.to_datetime(expected_result["Дата операции"], dayfirst=True)
-
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-def test_get_df_for_current_period_year(df_fix: DataFrame) -> None:
-    df = df_fix
-    # Преобразуем даты в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
-
-    result = get_df_for_current_period("2018-04-16 00:00:00", df, "Y")
-
-    expected_result = pd.DataFrame(
-        {
-            "Категории": ["Продукты", "Продукты", "Напитки", "Бонусы", "Покупки", "Просто"],
-            "Дата операции": [
-                "01.01.2018 00:00:00",
-                "02.01.2018 00:00:00",
-                "08.01.2018 00:00:00",
-                "14.01.2018 00:00:00",
-                "15.02.2018 00:00:00",
-                "28.01.2018 00:00:00",
-            ],
-        }
-    )
-    # Преобразуем даты в datetime
-    expected_result["Дата операции"] = pd.to_datetime(expected_result["Дата операции"], dayfirst=True)
-
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-def test_get_df_for_current_period_all(df_fix: DataFrame) -> None:
-    df = df_fix
-    # Преобразуем даты в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
-
-    result = get_df_for_current_period("2019-12-16 00:00:00", df, "ALL")
-
-    expected_result = pd.DataFrame(
-        {
-            "Категории": ["Продукты", "Продукты", "Напитки", "Бонусы", "Покупки", "Просто", "Книги"],
-            "Дата операции": [
-                "01.01.2018 00:00:00",
-                "02.01.2018 00:00:00",
-                "08.01.2018 00:00:00",
-                "14.01.2018 00:00:00",
-                "15.02.2018 00:00:00",
-                "28.01.2018 00:00:00",
-                "10.05.2019 00:00:00",
-            ],
-        }
-    )
-    # Преобразуем даты в datetime
-    expected_result["Дата операции"] = pd.to_datetime(expected_result["Дата операции"], dayfirst=True)
-
-    assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
-
-
-def test_get_df_for_current_period_wrong_date(df_fix: DataFrame) -> None:
-    df = df_fix
-    # Преобразуем даты в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
-
-    # Ожидаем, что функция выбросит исключение при передаче некорректного значения (88)
-    with pytest.raises(ValueError) as exc_info:
-        get_df_for_current_period("88", df, "ALL")
-
-    # Проверяем сообщение исключения (опционально)
-    assert str(exc_info.value) == "Ошибка: передана некорректная дата! Запустите с корректными параметрами."
+    result = get_date()
+    assert result == "2021-12-31 23:59:59"
