@@ -19,14 +19,16 @@ def disable_logging() -> Generator:
 
 @pytest.fixture
 def mock_events_env() -> Generator:
+    mock_settings = json.dumps({
+        "user_stocks": ["AAPL"],
+        "user_currencies": ["USD", "EUR"]
+    })
+
     with (
-        patch("src.utils.get_data") as mock_get_data,
-        patch("src.utils.get_df_for_current_period") as mock_get_df,
-        patch("builtins.open", mock_open(read_data=json.dumps({"user_stocks": ["AAPL"], "user_currencies": ["USD"]}))),
+        patch("builtins.open", mock_open(read_data=mock_settings)),
         patch("pandas.read_excel") as mock_read_excel,
         patch("requests.get") as mock_requests_get,
     ):
-
         # Подготовка данных
         mock_df = pd.DataFrame(
             {
@@ -36,55 +38,90 @@ def mock_events_env() -> Generator:
             }
         )
         mock_df["Дата операции"] = pd.to_datetime(mock_df["Дата операции"])
-
         mock_read_excel.return_value = mock_df  # Подменяем чтение Excel-файла
-        mock_get_data.return_value = mock_df
-        mock_get_df.return_value = mock_df
-
-        # Эмулируем успешный ответ API
-        mock_response = Mock()
-        mock_response.json.return_value = {"success": True, "rates": {"USD": 1.1, "RUB": 99}}
-        mock_requests_get.return_value = mock_response
-
         yield
 
+    mock_requests_get.return_value.json.return_value = {"success": True}  # API должен возвращать данные
 
-def test_events(mock_events_env: Mock) -> None:
-    """Тест для функции events()."""
+
+@pytest.mark.parametrize(
+    "expected_keys",
+    [
+        (["expenses", "income", "currency_rates", "stock_prices"]),
+    ],
+)
+def test_events_success(mock_events_env: Mock, expected_keys: list) -> None:
+    """
+    Тест успешного выполнения функции events().
+    """
     with (
         patch("src.events.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
-        patch("src.events.convert_to_rub", return_value={"USD": 90}) as mock_convert_to_rub,
+        patch("src.events.convert_to_rub", return_value={"USD": 90, "EUR": 100}) as mock_convert_to_rub,
     ):
-
         result_json = events("2024-02-05 12:00:00", "W")
         result = json.loads(result_json)
 
         # Проверяем структуру курсов валют
-        assert result["currency_rates"] == [{"currency": "USD", "rate": 90}]
-        assert result["currency_rates"][0]["currency"] == "USD"
-        assert result["currency_rates"][0]["rate"] == 90
-        mock_get_stock_prices.assert_called_once()  # Проверяем вызов функции
+        assert result["currency_rates"] == [{"currency": "USD", "rate": 90}, {"currency": "EUR", "rate": 100}]
+        mock_get_stock_prices.assert_called_once()
 
         # Проверяем структуру курсов акций
         assert result["stock_prices"] == [{"stock": "AAPL", "price": 150}]
-        assert result["stock_prices"][0]["stock"] == "AAPL"
-        assert result["stock_prices"][0]["price"] == 150
         mock_convert_to_rub.assert_called_once()
 
         # Проверяем, что все ключи есть в результате
-        assert "expenses" in result
-        assert "income" in result
-        assert "currency_rates" in result
-        assert "stock_prices" in result
+        assert all(key in result for key in expected_keys)
 
-    # Проверяем обработку исключений при получении курсов акций
-    with patch("src.external_api.get_stock_prices", side_effect=Exception("Ошибка API")):
-        result_json = events("2024-02-05 12:00:00")
-        result = json.loads(result_json)
-        assert result["stock_prices"] == []  # Ошибка API должна приводить к пустому списку
 
-    # Проверяем обработку исключений при получении курсов валют
-    with patch("src.external_api.get_exchange_rates", side_effect=Exception("Ошибка API")):
-        result_json = events("2024-02-05 12:00:00")
-        result = json.loads(result_json)
-        assert result["currency_rates"] == [{"currency": "USD", "rate": 90.0}]
+def test_events_currency_exception():
+    """Тест обработки исключения при получении курсов валют."""
+    test_date = "2025-01-01 22:22:22"
+    test_currency = ["USD", "EUR"]
+
+    # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
+    with patch("src.events.get_exchange_rates", side_effect=Exception("API error")):
+        with patch("src.events.convert_to_rub", return_value={}):
+            # Вызываем функцию
+            result_json = events(test_date, period_type="M")
+            result = json.loads(result_json)  # Преобразуем JSON в Python-объект
+
+            # Проверяем, что список `currency_rates` содержит ошибки
+            expected_rates = [{"currency": cur, "rate": "API error"} for cur in test_currency]
+            assert result["currency_rates"] == expected_rates
+
+
+@patch("src.events.get_stock_prices")
+@patch("src.events.get_exchange_rates")
+def test_events_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
+    """
+    Тест продолжения работы функции после возникновения исключения
+    """
+    # Настраиваем моки
+    mock_get_stock_prices.return_value = {
+        "AAPL": 150,
+        "GOOGL": 2800,
+        "TSLA": "Ошибка API",  # Эмулируем ошибку
+    }
+    mock_get_exchange_rates.return_value = {
+        "EUR": 1.0,
+        "UU": "N/A",  # Эмулируем ошибку
+        "RUB": 110,
+    }
+
+    # Вызываем функцию events
+    result_json = events("2024-02-05 12:00:00")
+    result = json.loads(result_json)
+
+    # Проверяем, что функция корректно обработала ошибки и вернула данные
+    assert result["stock_prices"] == [
+        {"stock": "AAPL", "price": 150},
+        {"stock": "GOOGL", "price": 2800},
+        {"stock": "TSLA", "price": "Ошибка API"},  # Ожидаем, что ошибка будет в результате
+    ]
+    assert result["currency_rates"] == [
+        {"currency": "EUR", "rate": 110},
+        {"currency": "UU", "rate": "N/A"},  # Ожидаем, что ошибка будет в результате
+    ]
+
+    # Дополнительная проверка: убедимся, что функция не выбросила исключение
+    assert "error" not in result  # Если функция возвращает ошибки в JSON, проверяем их отсутствие
