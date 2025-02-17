@@ -91,6 +91,8 @@ def test_views_currency_exception():
             expected_rates = [{"currency": cur, "rate": "API error"} for cur in test_currency]
             assert result["currency_rates"] == expected_rates
 
+
+
 @patch("src.views.get_stock_prices")
 @patch("src.views.get_exchange_rates")
 def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
