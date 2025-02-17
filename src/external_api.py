@@ -11,34 +11,44 @@ api_key = os.getenv("apikey")
 def get_stock_prices(
         symbols: tuple
 ) -> dict:
-    """Функция принимает кортеж с названиями акций и возвращает словарь, где ключи - тикеры, а значения это их цены"""
+    """
+    Функция принимает кортеж с кодами акций и возвращает словарь, где ключи - тикеры, а значения это их цены.
+    Args:
+        symbols: tuple кортеж кодов акций
+    Returns:
+        dict: словарь, где ключи - тикеры, а значения это их цены.
+    """
     finnhub_client = finnhub.Client(api_key=api_key)
     prices = {}
     for symbol in symbols:
         try:
             quote = finnhub_client.quote(symbol)
-
-            if not quote or "c" not in quote:
-                raise ValueError(f"Некорректный ответ API для тикера {symbol}")
-
+            if not quote or "c" not in quote or quote["c"] == 0:
+                prices[symbol] = "N/A"
+                continue
             prices[symbol] = quote["c"]
-
         except finnhub.exceptions.FinnhubAPIException as e:
             error_message = e.response.json() if hasattr(e.response, "json") else str(e)
-            prices[symbol] = f"Ошибка API {error_message}"
+            prices[symbol] = f"Ошибка {error_message}"
         except ValueError as e:
             prices[symbol] = f"Ошибка API {e}"
         except Exception as e:
-            prices[symbol] = f"Неизвестная ошибка: {e}"
+            prices[symbol] = str (e)
     return prices
 
 
 def get_exchange_rates(
-        currency_codes: tuple = ("RUB",)
+        currency_codes: tuple = (
+                "RUB",
+        )
 ) -> dict:
     """
     Функция принимает кортеж с кодами валют и возвращает словарь, где ключи это коды валют, а значения - это курсы
     этих валют
+    Args:
+        currency_codes: tuple кортеж с кодами валют
+    Returns:
+        dict словарь с кодами и курсами соответствующих валют
     """
 
     access_key = os.getenv("API_KEY")
@@ -64,9 +74,15 @@ def convert_to_rub(
         base_currency: str = "RUB"
 ) -> dict:
     """
-    Пересчитывает курсы валют в значения относительно рубля.
+    Пересчитывает курсы валют в значения относительно любой валюты.
     Принимает на вход словарь с курсами валют и код валюты, на которую надо произвести пересчет курсов.
     Возвращает словарь, где ключ — это код валюты, а значение — это количество рублей за единицу валюты.
+    Args:
+        rates: dict словарь с курсами валют
+        base_currency: str код базовой валюты, на которую надо произвести перерасчет. (должна быть в переданном словаре)
+        По умолчанию base_currency = "RUB"
+    Returns:
+        словарь с перерасчитанными курсами
     """
     rub_rate = rates.get(base_currency)
     if not isinstance(rub_rate, (int, float)):
