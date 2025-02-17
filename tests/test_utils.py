@@ -352,3 +352,16 @@ def test_get_df_for_current_period_all(df_fix: DataFrame) -> None:
     expected_result["Дата операции"] = pd.to_datetime(expected_result["Дата операции"], dayfirst=True)
 
     assert_frame_equal(result.reset_index(drop=True), expected_result.reset_index(drop=True))
+
+
+def test_get_df_for_current_period_wrong_date(df_fix: DataFrame) -> None:
+    df = df_fix
+    # Преобразуем даты в datetime
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+
+    # Ожидаем, что функция выбросит исключение при передаче некорректного значения (88)
+    with pytest.raises(ValueError) as exc_info:
+        get_df_for_current_period("88", df, "ALL")
+
+    # Проверяем сообщение исключения (опционально)
+    assert str(exc_info.value) == "Ошибка: передана некорректная дата! Запустите с корректными параметрами."
