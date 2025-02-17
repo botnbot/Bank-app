@@ -1,9 +1,8 @@
 import json
 import logging
 import os
-from datetime import datetime
 from logging import DEBUG, WARNING, Formatter, getLogger
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
 from pandas import DataFrame
@@ -11,50 +10,29 @@ from pandas import DataFrame
 from config import ROOT_PATH
 from src.decorators import save_to_file
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
-from src.utils import filter_dataframe, get_data, greetings, get_date
+from src.utils import get_data, get_df_for_current_period, greetings
 
+loger = getLogger("views")
+loger.setLevel(DEBUG)
 
-def get_operations_for_current_month(df: DataFrame, current_date: Union[str, datetime, Any, None] = None) -> Any:
-    """
-    Функция принимает DataFrame со всеми транзакциями и возвращает DataFrame с транзакциями за текущий месяц.
-    Args:
-        df (DataFrame): Исходный DataFrame с транзакциями.
-        current_date (Union[str, datetime, None]): Текущая дата для определения текущего месяца.
-    Returns:
-        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
-    """
-    # Если current_date не передана, используем текущую дату
-    if current_date is None:
-        current_date_dt = datetime.now()
-    elif isinstance(current_date, str):
-        # Преобразование строки в datetime
-        parsed_date = pd.to_datetime(current_date, format="%Y-%m-%d %H:%M:%S", errors="coerce")
-        if pd.isnull(parsed_date):
-            raise ValueError(f"Передана некорректная дата: {current_date}")
-        current_date_dt = parsed_date  # Преобразование успешно
-    elif isinstance(current_date, datetime):
-        current_date_dt = current_date
-    else:
-        raise ValueError(
-            "Аргумент (current_date) должен быть строкой в формате 'YYYY-MM-DD HH:MM:SS', объектом datetime или None"
-        )
+formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
-    # Преобразуем столбец "Дата операции" в datetime
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
+consolehandler = logging.StreamHandler()
+consolehandler.setFormatter(formatter)
+consolehandler.setLevel(DEBUG)
 
-    # Извлекаем текущий месяц и год
-    current_month = current_date_dt.month
-    current_year = current_date_dt.year
-    # Фильтруем DataFrame по текущему месяцу и году
-    current_month_df = filter_dataframe(
-        df,
-        {
-            "Дата операции": lambda dates: (dates <= current_date_dt)
-            & (dates.dt.year == current_year)
-            & (dates.dt.month == current_month)
-        },
-    )
-    return current_month_df
+logpath = os.path.join(ROOT_PATH, "logs")
+os.makedirs(logpath, exist_ok=True)
+logfile = os.path.join(ROOT_PATH, "logs", "log.txt")
+try:
+    filehandler = logging.FileHandler(logfile, mode="a")
+    filehandler.setLevel(WARNING)
+    filehandler.setFormatter(formatter)
+    if not loger.handlers:
+        loger.addHandler(consolehandler)
+        loger.addHandler(filehandler)
+except PermissionError as e:
+    loger.error(f"Ошибка доступа к файлу логов: {e}")
 
 
 def sum_by_category(df: DataFrame) -> DataFrame:
@@ -65,6 +43,7 @@ def sum_by_category(df: DataFrame) -> DataFrame:
     Returns:
         DataFrame с суммами транзакций по каждой категории.
     """
+
     result: DataFrame = (
         df.groupby("Категория", dropna=True)["Сумма операции с округлением"]
         .sum()
@@ -75,11 +54,11 @@ def sum_by_category(df: DataFrame) -> DataFrame:
 
 def get_total_spending(df: DataFrame) -> Any:
     """
-    Функция возвращает сумму всех трат по каждой карте
+    Функция осуществляет группировку сумм всех трат по каждой карте
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
-        DataFrame: (DataFrame) с суммами всех транзакций и суммами кэшбека по каждой карте."""
+        DataFrame (DataFrame): DataFrame с суммами всех транзакций и суммами кэшбека по каждой карте."""
     result = df.groupby("Номер карты", as_index=False, dropna=True)[["Сумма операции с округлением", "Кэшбэк"]].sum()
     return result
 
@@ -87,45 +66,32 @@ def get_total_spending(df: DataFrame) -> Any:
 def get_top_5(df: DataFrame) -> DataFrame:
     """
     Функция возвращает Топ-5 по сумме транзакции
+    Args:
+        df: исходный DataFrame с транзакциями
+    Returns:
+        отфильтрованный DataFrame, содержащий топ-5 транзакций
     """
     df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
+
     return df_top_five[["Дата операции", "Сумма операции с округлением", "Категория", "Описание"]].head(5)
 
 
 @save_to_file()
-def main() -> str:
+def views(date: str) -> str:
     """
-    Функция, принимающая на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
-     и возвращающую JSON-ответ со следующими данными:
-     Приветствие в формате "???", где ??? — «Доброе утро» / «Добрый день» / «Добрый вечер» / «Доброй ночи»
-      в зависимости от текущего времени.
-      По каждой карте:
-      последние 4 цифры карты, общая сумма расходов, кешбэк (1 рубль на каждые 100 рублей).
-      Топ-5 транзакции по сумме платежа.
-      Курс валют.
-      Стоимость акций из S&P 500.
+    Функция формирует данные для страницы ***views***
+    Args:
+        date : строка с датой и временем в формате YYYY-MM-DD HH:MM:SS
+    Returns:
+        str : JSON-строка, содержащая следующие данные:
+         Приветствие в формате "???", где ??? — «Доброе утро» / «Добрый день» / «Добрый вечер» / «Доброй ночи»
+         в зависимости от текущего времени.
+         По каждой карте:
+             последние 4 цифры карты, общая сумма расходов, кешбэк (1 рубль на каждые 100 рублей).
+             Топ-5 транзакции по сумме платежа.
+         Курс валют.
+         Стоимость акций из S&P 500.
     """
-    loger = getLogger("views")
-    loger.setLevel(DEBUG)
-
-    formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-
-    consolehandler = logging.StreamHandler()
-    consolehandler.setFormatter(formatter)
-    consolehandler.setLevel(DEBUG)
-
-    logpath = os.path.join(ROOT_PATH, "logs")
-    os.makedirs(logpath, exist_ok=True)  # Создаём только папку, а не файл!
-    logfile = os.path.join(ROOT_PATH, "logs", "log.txt")
-    try:
-        filehandler = logging.FileHandler(logfile, mode="a")
-        filehandler.setLevel(WARNING)
-        filehandler.setFormatter(formatter)
-        if not loger.handlers:
-            loger.addHandler(consolehandler)
-            loger.addHandler(filehandler)
-    except PermissionError as e:
-        loger.error(f"Ошибка доступа к файлу логов: {e}")
 
     loger.info("Запуск")
     # Загрузка данных
@@ -133,11 +99,8 @@ def main() -> str:
     df = get_data(data_path)
     loger.info("Транзакции из файла загружены")
 
-    # Получение даты
-    date = get_date()
-
     # Получение операций за текущий месяц
-    df_current_month = get_operations_for_current_month(df, date)
+    df_current_month = get_df_for_current_period(date, df)
     loger.info(f"Транзакции за текущий месяц получены {date[:-12]}")
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
@@ -145,7 +108,6 @@ def main() -> str:
     # Преобразуем список словарей в DataFrame
     if isinstance(total_spent_df, list):
         total_spent_df = pd.DataFrame(total_spent_df)
-
 
     total_spent_df["last_digits"] = total_spent_df["Номер карты"].astype(str).str[-4:]
     cards = total_spent_df.rename(columns={"Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"})[
@@ -185,32 +147,40 @@ def main() -> str:
     loger.info("Пользовательские настройки получены")
 
     # Получение курсов акций
+    stock_prices_formatted = []
+    loger.info("Запрос курса акций.")
     try:
         stock_prices = get_stock_prices(stocks)
-        loger.info("Запрос курса акций")
-
-        stock_prices_formatted = []
         for stock, price in stock_prices.items():
-            if "Ошибка API" in price:
-                loger.warning(f"Ошибка API. Не удалось получить курс акций для {stock}")
+            if isinstance(price, str) and "Ошибка API" in price:
+                loger.warning(f"{stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": price})
             else:
                 stock_prices_formatted.append({"stock": stock, "price": price})
     except Exception as e:
-        loger.error(f"Ошибка API при получении курсов акций: {e}")
-        stock_prices_formatted = []
+        loger.error(f"Неизвестная ошибка при получении курсов акций: {repr(e)}")
 
     # Получение курсов валют
+    loger.info("Запрос курса валют")
     try:
         rates = get_exchange_rates(currency)
-        loger.info("Запрос курса валют")
         rub_rates = convert_to_rub(rates)
-        currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
+
+        # Фильтрация корректных валют и логирование некорректных значений
+        currency_rates_formatted = []
+        for cur, rate in rub_rates.items():
+            if isinstance(cur, str) and cur.isalpha():
+                currency_rates_formatted.append({"currency": cur, "rate": rate})
+            else:
+                loger.warning(f"Пропущен некорректный код валюты: {cur}")
+
         loger.info("Получен курс валют")
     except Exception as e:
-        currency_rates_formatted = []
-        loger.warning(f"Ошибка получения курсов валют: {e}")
+        currency_rates_formatted = [
+            {"currency": cur, "rate": str(e)} for cur in currency if isinstance(cur, str) and cur.isalpha()
+        ]
+        loger.error(f"Ошибка при получении курсов валют: {e}")
 
-    # Финальный JSON-ответ
     result = {
         "greeting": greetings(),
         "cards": cards,
@@ -221,5 +191,6 @@ def main() -> str:
     loger.info("Ответ сформирован")
     return json.dumps(result, indent=4, ensure_ascii=False)
 
+
 if __name__ == "__main__":
-    main()
+    print(views("2021-02-09 17:05:48"))

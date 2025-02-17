@@ -1,6 +1,6 @@
 import os
 from typing import Generator
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from finnhub.exceptions import FinnhubAPIException  # type: ignore
@@ -23,7 +23,7 @@ def set_env_variables(monkeypatch: Mock) -> None:
 
 def test_get_stock_prices_success(mock_finnhub_client: Mock) -> None:
     """Тест успешного получения цен акций."""
-    mock_instance = MagicMock()
+    mock_instance = Mock()
     mock_instance.quote.side_effect = [
         {"c": 150.00},  # Ответ для AAPL
         {"c": 2800.00},  # Ответ для GOOGL
@@ -38,10 +38,10 @@ def test_get_stock_prices_with_error(mock_finnhub_client: Mock) -> None:
     """Тест обработки ошибок для одного из тикеров."""
     from finnhub.exceptions import FinnhubAPIException
 
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"error": "API Error"}
 
-    mock_instance = MagicMock()
+    mock_instance = Mock()
     mock_instance.quote.side_effect = [
         {"c": 150.00},  # Ответ для AAPL
         FinnhubAPIException(mock_response),  # Ошибка для GOOGL
@@ -51,17 +51,21 @@ def test_get_stock_prices_with_error(mock_finnhub_client: Mock) -> None:
     result = get_stock_prices(("AAPL", "GOOGL"))
     assert result == {
         "AAPL": 150.00,
-        "GOOGL": "Ошибка API {'error': 'API Error'}",
+        "GOOGL": "Ошибка {'error': 'API Error'}",
     }
 
 
-def test_get_stock_prices_mixed_responses(mock_finnhub_client: Mock) -> None:
-    """Тест смешанных ответов: успешный, некорректный, ошибка."""
+def test_get_stock_prices_mixed_responses(
+        mock_finnhub_client: Mock
+) -> None:
+    """
+    Тест смешанных ответов: успешный, некорректный, ошибка.
+    """
 
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"error": "API Error"}
 
-    mock_instance = MagicMock()
+    mock_instance = Mock()
     mock_instance.quote.side_effect = [
         {"c": 150.00},  # Ответ для AAPL
         {},  # Некорректный ответ для GOOGL
@@ -72,25 +76,25 @@ def test_get_stock_prices_mixed_responses(mock_finnhub_client: Mock) -> None:
     result = get_stock_prices(("AAPL", "GOOGL", "MSFT"))
     assert result == {
         "AAPL": 150.00,
-        "GOOGL": "Ошибка API Некорректный ответ API для тикера GOOGL",
-        "MSFT": "Ошибка API {'error': 'API Error'}",
+        "GOOGL": "N/A",
+        "MSFT": "Ошибка {'error': 'API Error'}",
     }
 
 
 def test_get_stock_prices_unknown_exception(mock_finnhub_client: Mock) -> None:
     """Тест обработки неизвестной ошибки."""
-    mock_instance = MagicMock()
+    mock_instance = Mock()
     mock_instance.quote.side_effect = TypeError("Unexpected type error")
     mock_finnhub_client.return_value = mock_instance
 
     result = get_stock_prices(("AAPL",))
-    assert result == {"AAPL": "Неизвестная ошибка: Unexpected type error"}
+    assert result == {"AAPL": "Unexpected type error"}
 
 
 @patch("requests.get")
 def test_get_exchange_rates_success(mock_get: Mock) -> None:
     """Тест успешного получения обменных курсов"""
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"success": True, "rates": {"RUB": 75.0, "USD": 1.1}}
     mock_get.return_value = mock_response
 
@@ -114,18 +118,11 @@ def test_get_exchange_rates_missing_api_key() -> None:
 
 
 @patch("requests.get")
-def test_get_exchange_rates_wrong_api_key(mock_get: Mock, monkeypatch: Mock) -> None:
-    """Тест исключения при неверном API-ключе."""
-    monkeypatch.setenv("API_KEY", "")  # Устанавливаем API_KEY как пустую строку
-
-    with pytest.raises(ValueError, match="API-ключ не найден"):
-        get_exchange_rates(("USD",))
-
-
-@patch("requests.get")
-def test_get_exchange_rates_api_error(mock_get: Mock) -> None:
-    """Тест ошибки получения ключа API."""
-    mock_response = MagicMock()
+def test_get_exchange_rates_api_error(
+        mock_get: Mock
+) -> None:
+    """Тест неверного ключа API."""
+    mock_response = Mock()
     mock_response.json.return_value = {"success": False, "error": {"info": "Invalid API key."}}
     mock_get.return_value = mock_response
 
@@ -136,7 +133,7 @@ def test_get_exchange_rates_api_error(mock_get: Mock) -> None:
 @patch("requests.get")
 def test_get_exchange_rates_missing_rub(mock_get: Mock) -> None:
     """Тест отсутствия курса RUB в запросе."""
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"success": True, "rates": {"RUB": 75.0, "USD": 1.1}}
     mock_get.return_value = mock_response
 
@@ -148,7 +145,7 @@ def test_get_exchange_rates_missing_rub(mock_get: Mock) -> None:
 @patch("requests.get")
 def test_get_exchange_rates_missing_currency_code(mock_get: Mock) -> None:
     """Тест запроса курса несуществующей валюты."""
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"success": True, "rates": {"RUB": 75.0}}
     mock_get.return_value = mock_response
 
