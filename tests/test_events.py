@@ -19,10 +19,7 @@ def disable_logging() -> Generator:
 
 @pytest.fixture
 def mock_events_env() -> Generator:
-    mock_settings = json.dumps({
-        "user_stocks": ["AAPL"],
-        "user_currencies": ["USD", "EUR"]
-    })
+    mock_settings = json.dumps({"user_stocks": ["AAPL"], "user_currencies": ["USD", "EUR"]})
 
     with (
         patch("builtins.open", mock_open(read_data=mock_settings)),
@@ -73,7 +70,7 @@ def test_events_success(mock_events_env: Mock, expected_keys: list) -> None:
         assert all(key in result for key in expected_keys)
 
 
-def test_events_currency_exception():
+def test_events_currency_exception() -> None:
     """Тест обработки исключения при получении курсов валют."""
     test_date = "2025-01-01 22:22:22"
     test_currency = ["USD", "EUR"]
