@@ -1,12 +1,11 @@
 import json
 import logging
-from typing import Generator
+from typing import Any, Callable, Generator
 from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
-
-from src.views import views
+from _pytest.logging import LogCaptureFixture
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -19,10 +18,7 @@ def disable_logging() -> Generator:
 
 @pytest.fixture
 def mock_views_env() -> Generator:
-    mock_settings = json.dumps({
-        "user_stocks": ["AAPL"],
-        "user_currencies": ["USD", "EUR"]
-    })
+    mock_settings = json.dumps({"user_stocks": ["AAPL"], "user_currencies": ["USD", "EUR"]})
 
     with (
         patch("builtins.open", mock_open(read_data=mock_settings)),
@@ -37,7 +33,7 @@ def mock_views_env() -> Generator:
                 "Кэшбэк": [6, None],
                 "Категория": ["Продукты", "Зарплата"],
                 "Номер карты": ["12588", "987654"],
-                "Описание": ["Ozon.ru", "Магнит"]
+                "Описание": ["Ozon.ru", "Магнит"],
             }
         )
         mock_df["Дата операции"] = pd.to_datetime(mock_df["Дата операции"])
@@ -45,6 +41,19 @@ def mock_views_env() -> Generator:
         yield
 
     mock_requests_get.return_value.json.return_value = {"success": True}  # API должен возвращать данные
+
+
+def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
+    """Mock-декоратор для подмены @save_to_file"""
+
+    def wrapper(func: Callable) -> Callable:
+        return func
+
+    return wrapper
+
+
+with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
+    from src.views import views
 
 
 @pytest.mark.parametrize(
@@ -75,7 +84,8 @@ def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
         # Проверяем, что все ключи есть в результате
         assert all(key in result for key in expected_keys)
 
-def test_views_currency_exception():
+
+def test_views_currency_exception() -> None:
     """Тест обработки исключения при получении курсов валют."""
     test_date = "2025-01-01 22:22:22"
     test_currency = ["USD", "EUR"]
@@ -92,14 +102,12 @@ def test_views_currency_exception():
             assert result["currency_rates"] == expected_rates
 
 
-
 @patch("src.views.get_stock_prices")
 @patch("src.views.get_exchange_rates")
 def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
     """
     Тест продолжения работы функции после возникновения исключения
     """
-    # Настраиваем моки
     mock_get_stock_prices.return_value = {
         "AAPL": 150,
         "GOOGL": 2800,
@@ -111,20 +119,31 @@ def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_st
         "RUB": 110,
     }
 
-    # Вызываем функцию events
     result_json = views("2024-02-05 12:00:00")
     result = json.loads(result_json)
 
-    # Проверяем, что функция корректно обработала ошибки и вернула данные
     assert result["stock_prices"] == [
         {"stock": "AAPL", "price": 150},
         {"stock": "GOOGL", "price": 2800},
-        {"stock": "TSLA", "price": "Ошибка API"},  # Ожидаем, что ошибка будет в результате
+        {"stock": "TSLA", "price": "Ошибка API"},
     ]
     assert result["currency_rates"] == [
         {"currency": "EUR", "rate": 110},
-        {"currency": "UU", "rate": "N/A"},  # Ожидаем, что ошибка будет в результате
+        {"currency": "UU", "rate": "N/A"},
     ]
 
-    # Дополнительная проверка: убедимся, что функция не выбросила исключение
     assert "error" not in result  # Если функция возвращает ошибки в JSON, проверяем их отсутствие
+
+
+def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
+    with patch("os.makedirs"), patch("logging.FileHandler", side_effect=PermissionError("No permission")):
+        from src.views import loger
+
+        loger.handlers.clear()
+        with caplog.at_level(logging.ERROR, logger="views"):
+            from importlib import reload
+
+            from src import views
+
+            reload(views)
+        assert "Ошибка доступа к файлу логов" in caplog.text
