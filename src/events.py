@@ -6,6 +6,7 @@ from logging import DEBUG, Formatter, getLogger
 import pandas as pd
 
 from config import ROOT_PATH
+from src.decorators import save_to_file
 from src.external_api import convert_to_rub, get_exchange_rates, get_stock_prices
 from src.utils import get_data, get_df_for_current_period
 
@@ -32,6 +33,7 @@ except PermissionError as e:
     loger.error(f"Ошибка доступа к файлу логов: {e}")
 
 
+@save_to_file()
 def events(date: str, period_type: str = "M") -> str:
     """Главная функция для страницы events.
     Args:
