@@ -1,12 +1,10 @@
 import json
 import logging
-from typing import Generator
+from typing import Any, Callable, Generator
 from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
-
-from src.events import events
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -19,10 +17,7 @@ def disable_logging() -> Generator:
 
 @pytest.fixture
 def mock_events_env() -> Generator:
-    mock_settings = json.dumps({
-        "user_stocks": ["AAPL"],
-        "user_currencies": ["USD", "EUR"]
-    })
+    mock_settings = json.dumps({"user_stocks": ["AAPL"], "user_currencies": ["USD", "EUR"]})
 
     with (
         patch("builtins.open", mock_open(read_data=mock_settings)),
@@ -42,6 +37,20 @@ def mock_events_env() -> Generator:
         yield
 
     mock_requests_get.return_value.json.return_value = {"success": True}  # API должен возвращать данные
+
+
+# мокаем декоратор
+def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
+    """Mock-декоратор для подмены @save_to_file"""
+
+    def wrapper(func: Callable) -> Callable:
+        return func
+
+    return wrapper
+
+
+with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
+    from src.events import events
 
 
 @pytest.mark.parametrize(
@@ -73,7 +82,7 @@ def test_events_success(mock_events_env: Mock, expected_keys: list) -> None:
         assert all(key in result for key in expected_keys)
 
 
-def test_events_currency_exception():
+def test_events_currency_exception() -> None:
     """Тест обработки исключения при получении курсов валют."""
     test_date = "2025-01-01 22:22:22"
     test_currency = ["USD", "EUR"]
