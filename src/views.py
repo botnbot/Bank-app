@@ -153,33 +153,35 @@ def views(date: str) -> str:
         stock_prices = get_stock_prices(stocks)
         for stock, price in stock_prices.items():
             if isinstance(price, str) and "Ошибка API" in price:
-                loger.warning(f"{stock}: {price}")
+                loger.warning(f"Ошибка {stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": price})
+            elif isinstance(price, (int, float)):
                 stock_prices_formatted.append({"stock": stock, "price": price})
             else:
-                stock_prices_formatted.append({"stock": stock, "price": price})
+                loger.warning(f"N/A {stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": "N/A"})
     except Exception as e:
         loger.error(f"Неизвестная ошибка при получении курсов акций: {repr(e)}")
+        stock_prices_formatted = [{"stock": stock, "price": f"Ошибка: {repr(e)}"} for stock in stocks]
 
     # Получение курсов валют
     loger.info("Запрос курса валют")
+    currency_rates_formatted = []
     try:
         rates = get_exchange_rates(currency)
         rub_rates = convert_to_rub(rates)
 
         # Фильтрация корректных валют и логирование некорректных значений
-        currency_rates_formatted = []
         for cur, rate in rub_rates.items():
             if isinstance(cur, str) and cur.isalpha():
                 currency_rates_formatted.append({"currency": cur, "rate": rate})
             else:
                 loger.warning(f"Пропущен некорректный код валюты: {cur}")
-
-        loger.info("Получен курс валют")
     except Exception as e:
+        loger.warning(f"Ошибка при получении курсов валют: {e}")
         currency_rates_formatted = [
-            {"currency": cur, "rate": str(e)} for cur in currency if isinstance(cur, str) and cur.isalpha()
+            {"currency": cur, "rate": f"{str(e)}"} for cur in currency if isinstance(cur, str) and cur.isalpha()
         ]
-        loger.error(f"Ошибка при получении курсов валют: {e}")
 
     result = {
         "greeting": greetings(),
