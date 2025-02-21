@@ -4,10 +4,10 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from freezegun import freeze_time
 from pandas import DataFrame
-from pandas._testing import assert_frame_equal
 
-from src.utils import filter_dataframe, get_data, get_date, get_df_for_current_period, greetings
+from src.utils import filter_dataframe, get_data, get_date, greetings
 
 
 @pytest.mark.parametrize(
@@ -62,7 +62,6 @@ def df_fix() -> DataFrame:
         }
     )
     return df
-from src.utils import filter_dataframe, get_data, get_date, greetings
 
 
 @pytest.mark.parametrize(
@@ -269,18 +268,22 @@ def test_filter_dataframe_missing_column() -> None:
 @pytest.mark.parametrize(
     "mock_input, expected_output",
     [
-        ("", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),  # Пустой ввод → текущая дата
+        ("", None),  # Пустой ввод → используем текущее время (установим его в тесте)
         ("2021-12-31 23:59:59", "2021-12-31 23:59:59"),  # Корректная дата
     ],
 )
-@patch("builtins.input")  # Мокаем `input()`
-def test_get_date(mock_input_function: Mock, mock_input: Mock, expected_output: Mock) -> None:
+@patch("builtins.input")
+@freeze_time("2024-02-15 12:00:00")
+def test_get_date(mock_input_function: Mock, mock_input: str, expected_output: str) -> None:
     """Тестируем разные сценарии работы get_date()."""
 
     mock_input_function.side_effect = [mock_input]  # Симулируем ввод пользователя
+
+    expected_result = expected_output or "2024-02-15 12:00:00"
+
     result = get_date()  # Вызываем тестируемую функцию
 
-    assert result == expected_output  # Проверяем корректность
+    assert result == expected_result  # Проверяем корректность
 
 
 @patch("builtins.input", side_effect=["invalid date", "2021-12-31 23:59:59"])  # 1-я попытка неверная, 2-я успешная

@@ -8,9 +8,7 @@ load_dotenv()
 api_key = os.getenv("apikey")
 
 
-def get_stock_prices(
-        symbols: tuple
-) -> dict:
+def get_stock_prices(symbols: tuple) -> dict:
     """
     Функция принимает кортеж с кодами акций и возвращает словарь, где ключи - тикеры, а значения это их цены.
     Args:
@@ -37,11 +35,7 @@ def get_stock_prices(
     return prices
 
 
-def get_exchange_rates(
-        currency_codes: tuple = (
-                "RUB",
-        )
-) -> dict:
+def get_exchange_rates(currency_codes: tuple = ("RUB",)) -> dict:
     """
     Функция принимает кортеж с кодами валют и возвращает словарь, где ключи это коды валют, а значения - это курсы
     этих валют
@@ -69,10 +63,7 @@ def get_exchange_rates(
     return {code: rates.get(code, "N/A") for code in currency_codes}
 
 
-def convert_to_rub(
-        rates: dict,
-        base_currency: str = "RUB"
-) -> dict:
+def convert_to_rub(rates: dict, base_currency: str = "RUB") -> dict:
     """
     Пересчитывает курсы валют в значения относительно любой валюты.
     Принимает на вход словарь с курсами валют и код валюты, на которую надо произвести пересчет курсов.
