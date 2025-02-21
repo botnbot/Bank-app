@@ -55,9 +55,7 @@ def test_get_stock_prices_with_error(mock_finnhub_client: Mock) -> None:
     }
 
 
-def test_get_stock_prices_mixed_responses(
-        mock_finnhub_client: Mock
-) -> None:
+def test_get_stock_prices_mixed_responses(mock_finnhub_client: Mock) -> None:
     """
     Тест смешанных ответов: успешный, некорректный, ошибка.
     """
@@ -118,9 +116,7 @@ def test_get_exchange_rates_missing_api_key() -> None:
 
 
 @patch("requests.get")
-def test_get_exchange_rates_api_error(
-        mock_get: Mock
-) -> None:
+def test_get_exchange_rates_api_error(mock_get: Mock) -> None:
     """Тест неверного ключа API."""
     mock_response = Mock()
     mock_response.json.return_value = {"success": False, "error": {"info": "Invalid API key."}}
