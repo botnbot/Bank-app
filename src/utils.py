@@ -32,10 +32,21 @@ def get_data(path: str) -> pd.DataFrame:
     return df
 
 
-def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "AND") -> Any:
+def filter_dataframe(
+        df: pd.DataFrame,
+        filtr_conditions: dict,
+        operator: str = "AND"
+) -> Any:
     """
     Функция принимает DataFrame с транзакциями, и фильтрует его по заданным условиям.
+    Args:
+        df: - Исходный DataFrame
+        filtr_conditions: - Условия, по которым нужно фильтровать DataFrame
+        operator: - Логический оператор, который объединяет условия фильтрации ("AND", "OR")
+    Returns:
+        Отфильтрованый DataFrame
     """
+
     if operator not in ("AND", "OR"):
         raise ValueError("Логический оператор должен быть строкой AND или OR")
 
@@ -114,7 +125,7 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
          ALL — все данные до указанной даты.
 
     Returns:
-        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий месяц.
+        DataFrame: Отфильтрованный DataFrame с транзакциями за текущий период.
 
     Raises:
         ValueError: Если в DataFrame отсутствует столбец "Дата операции" или его не удается преобразовать в DateTime.
