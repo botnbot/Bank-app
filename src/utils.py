@@ -32,11 +32,7 @@ def get_data(path: str) -> pd.DataFrame:
     return df
 
 
-def filter_dataframe(
-        df: pd.DataFrame,
-        filtr_conditions: dict,
-        operator: str = "AND"
-) -> Any:
+def filter_dataframe(df: pd.DataFrame, filtr_conditions: dict, operator: str = "AND") -> Any:
     """
     Функция принимает DataFrame с транзакциями, и фильтрует его по заданным условиям.
     Args:
