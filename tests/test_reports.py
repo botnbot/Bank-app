@@ -90,7 +90,7 @@ def test_get_report_by_category_without_date(
     mock_data: pd.DataFrame,
     mock_filtered_data: pd.DataFrame,
 ) -> None:
-    """Проверяем, что при отсутствии даты используется текущая"""
+    """Проверяем, что при отсутствии даты используется текущая дата"""
 
     mock_get_data.return_value = mock_data
     mock_filter_dataframe.return_value = mock_filtered_data
@@ -131,6 +131,7 @@ def test_get_report_by_category_filters_by_date(
     mock_data = pd.DataFrame(
         [
             ["01.06.2021 12:00:00", "Супермаркеты", 500],
+            ["02.10.2021 12:00:00", "Супермаркеты", 600],
             ["15.11.2021 14:30:00", "Супермаркеты", 1500],
         ],
         columns=["Дата операции", "Категория", "Сумма"],
