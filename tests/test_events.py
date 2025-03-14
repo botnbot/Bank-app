@@ -50,7 +50,7 @@ def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
 
 
 with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
-    from src.events import events
+    from src.views import events
 
 
 @pytest.mark.parametrize(
