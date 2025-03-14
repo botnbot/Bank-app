@@ -48,7 +48,7 @@ def find_money_transfers_from_individuals(data_path: str) -> Any:
     try:
         full_data_path = os.path.join(ROOT_PATH, data_path)
         df = get_data(full_data_path)
-        loger.info("Данные из файла загружены")
+        loger.info(f"Данные из файла {full_data_path} загружены")
     except FileNotFoundError as e:
         loger.error(f"Ошибка доступа к файлу с данными: {e}")
         raise FileNotFoundError("Файл с данными не найден")
@@ -56,7 +56,7 @@ def find_money_transfers_from_individuals(data_path: str) -> Any:
     pattern = re.compile(r"^\s*[A-ZА-ЯЁ]{1}[a-zа-яё]+\s+[A-ZА-ЯЁ]{1}\.\s*$")
     filter_conditions = {"Категория": "Переводы", "Описание": pattern}
     result = filter_dataframe(df, filter_conditions, "AND")
-    loger.info("Ответ сформирован")
+    loger.info("Ответ по переводам физлицам сформирован")
     return result.to_json(orient="records", force_ascii=False)
 
 
