@@ -93,15 +93,14 @@ def views(date: str) -> str:
          Стоимость акций из S&P 500.
     """
 
-    loger.info("Запуск")
     # Загрузка данных
-    data_path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
+    data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
     df = get_data(data_path)
-    loger.info("Транзакции из файла загружены")
+    loger.info(f"Транзакции из файла {data_path} загружены")
 
     # Получение операций за текущий месяц
     df_current_month = get_df_for_current_period(date, df)
-    loger.info(f"Транзакции за {date[:-12]} получены")
+    loger.info(f"Транзакции за {date[:-12]} отфильтрованы")
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
 
@@ -144,7 +143,7 @@ def views(date: str) -> str:
         user_settings = json.load(f)
     stocks = user_settings["user_stocks"]
     currency = user_settings["user_currencies"]
-    loger.info("Пользовательские настройки получены")
+    loger.info("Пользовательские настройки  акций и валют получены")
 
     # Получение курсов акций
     stock_prices_formatted = []
@@ -190,7 +189,7 @@ def views(date: str) -> str:
         "currency_rates": currency_rates_formatted,
         "stock_prices": stock_prices_formatted,
     }
-    loger.info("Ответ сформирован")
+    loger.info("Данные  для страницы 'Главная' сформированы")
     return json.dumps(result, indent=4, ensure_ascii=False)
 
 
@@ -219,7 +218,6 @@ def events(date: str, period_type: str = "M") -> str:
         Курс валют.
         Стоимость акций из S&P 500."""
 
-    loger.info("Получение данных для страницы 'События'")
     # Загрузка пользовательских настроек
     user_settings_path = os.path.join(ROOT_PATH, "user_settings.json")
     with open(user_settings_path, "r") as f:
@@ -229,15 +227,14 @@ def events(date: str, period_type: str = "M") -> str:
     loger.info("Пользовательские настройки получены")
 
     # Загрузка данных
-    data_path = os.path.join(ROOT_PATH, "data", "operations.xlsx")
+    data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
     df = get_data(data_path)
-    loger.info("Транзакции из файла загружены")
+    loger.info(f"Транзакции из файла {data_path} загружены")
 
     df = get_df_for_current_period(date, df, period_type)
     loger.info("Данные за период отфильтрованы")
 
-    # Преобразуем столбец "Дата операции" в datetime
-    df = df.copy()  # Создаём копию, чтобы избежать SettingWithCopyWarning
+    df = df.copy()
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
     # Расходы
@@ -295,22 +292,34 @@ def events(date: str, period_type: str = "M") -> str:
         stock_prices = get_stock_prices(stocks)
         for stock, price in stock_prices.items():
             if isinstance(price, str) and "Ошибка API" in price:
-                loger.warning(f"{stock}: {price}")
+                loger.warning(f"Ошибка {stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": price})
+            elif isinstance(price, (int, float)):
                 stock_prices_formatted.append({"stock": stock, "price": price})
             else:
-                stock_prices_formatted.append({"stock": stock, "price": price})
+                loger.warning(f"N/A {stock}: {price}")
+                stock_prices_formatted.append({"stock": stock, "price": "N/A"})
     except Exception as e:
         loger.error(f"Неизвестная ошибка при получении курсов акций: {repr(e)}")
+        stock_prices_formatted = [{"stock": stock, "price": f"Ошибка: {repr(e)}"} for stock in stocks]
 
     # Получение курсов валют
+    loger.info("Запрос курса валют")
+    currency_rates_formatted = []
     try:
         rates = get_exchange_rates(currency)
         rub_rates = convert_to_rub(rates)
-        currency_rates_formatted = [{"currency": cur, "rate": rate} for cur, rate in rub_rates.items()]
-        loger.info(f"Получены курсы валют {currency_rates_formatted[0].keys}")
+
+        # Фильтрация корректных валют и логирование некорректных значений
+        for cur, rate in rub_rates.items():
+            if isinstance(cur, str) and cur.isalpha():
+                currency_rates_formatted.append({"currency": cur, "rate": rate})
+            else:
+                loger.warning(f"Пропущен некорректный код валюты: {cur}")
     except Exception as e:
+        loger.warning(f"Ошибка при получении курсов валют: {e}")
         currency_rates_formatted = [
-            {"currency": cur, "rate": str(e)} for cur in currency if isinstance(cur, str) and cur.isalpha()
+            {"currency": cur, "rate": f"{str(e)}"} for cur in currency if isinstance(cur, str) and cur.isalpha()
         ]
 
     result = {
@@ -323,5 +332,5 @@ def events(date: str, period_type: str = "M") -> str:
         "currency_rates": currency_rates_formatted,
         "stock_prices": stock_prices_formatted,
     }
-    loger.info("Данные сформированы")
+    loger.info("Данные  для страницы 'События' сформированы")
     return json.dumps(result, indent=4, ensure_ascii=False)
