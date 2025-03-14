@@ -8,7 +8,7 @@ from src.services import investment_bank
 
 
 @pytest.fixture
-def mock_transactions():
+def mock_transactions() -> list:
     return [
         {"Дата операции": "2018-01", "Сумма операции": 124},
         {"Дата операции": "2018-04", "Сумма операции": 567},
@@ -17,14 +17,14 @@ def mock_transactions():
     ]
 
 
-def test_piggy_bank_correct_data(mock_transactions) -> None:
+def test_piggy_bank_correct_data(mock_transactions: list) -> None:
     """Успешный тест с корректными аргументами"""
     result = investment_bank("2018-04", mock_transactions, 50)
     expected_result = 60
     assert result == expected_result
 
 
-def test_piggy_bank_incorrect_date(mock_transactions) -> None:
+def test_piggy_bank_incorrect_date(mock_transactions: list) -> None:
     """Тест передачи некорректной даты в качестве аргумента"""
     with pytest.raises(ValueError):
         investment_bank("2018-14", mock_transactions, 50)
@@ -53,6 +53,7 @@ def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
         # Устанавливаем уровень логирования и запускаем код
         with caplog.at_level(logging.ERROR, logger="investment_bank"):
             from importlib import reload
+
             import src.services
 
             reload(src.services)
