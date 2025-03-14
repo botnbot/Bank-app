@@ -17,20 +17,20 @@ def mock_transactions() -> list:
     ]
 
 
-def test_piggy_bank_correct_data(mock_transactions: list) -> None:
+def test_investment_bank_correct_data(mock_transactions: list) -> None:
     """Успешный тест с корректными аргументами"""
     result = investment_bank("2018-04", mock_transactions, 50)
     expected_result = 60
     assert result == expected_result
 
 
-def test_piggy_bank_incorrect_date(mock_transactions: list) -> None:
+def test_investment_bank_incorrect_date(mock_transactions: list) -> None:
     """Тест передачи некорректной даты в качестве аргумента"""
     with pytest.raises(ValueError):
         investment_bank("2018-14", mock_transactions, 50)
 
 
-def test_piggy_bank_missing_date_in_DataFrame() -> None:
+def test_investment_bank_missing_date_in_DataFrame() -> None:
     """Тест передачи DataFrame с пропущенными датами в качестве аргумента"""
     mock_transactions = [
         {"Дата операции": "NaT", "Сумма операции": 567},
