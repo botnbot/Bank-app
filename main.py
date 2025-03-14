@@ -57,11 +57,12 @@ def menu(prompt: str, options: set) -> str:
 
 def handle_web_pages(option: str) -> None:
     """Обрабатывает раздел 'Веб-страницы'."""
-    if option == "1":
-        optional_date = get_date()
-        print(views(optional_date))
-    elif option == "2":
-        while True:
+    match option:
+        case "1":
+         optional_date = get_date()
+         print(views(optional_date))
+        case "1":
+         while True:
             period = (
                 input(
                     "Введите период:\n"
@@ -131,10 +132,10 @@ def handle_reports(option: str) -> None:
                         print(json.dumps(expense, ensure_ascii=False, indent=2))
                     break
                 print("Некорректная категория. Попробуйте снова.")
-
-    if option in ("2", "3"):
-        print("Функция пока не реализована.")
-
+        case "2":
+            print("Функция пока не реализована.")
+        case "3":
+            print("Функция пока не реализована.")
 
 while True:
     first_level = menu(
