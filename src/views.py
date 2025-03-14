@@ -79,7 +79,7 @@ def get_top_5(df: DataFrame) -> DataFrame:
 @save_to_file()
 def views(date: str) -> str:
     """
-    Функция формирует данные для страницы ***views***
+    Функция формирует данные для страницы ***Главная***
     Args:
         date : строка с датой и временем в формате YYYY-MM-DD HH:MM:SS
     Returns:
@@ -101,7 +101,7 @@ def views(date: str) -> str:
 
     # Получение операций за текущий месяц
     df_current_month = get_df_for_current_period(date, df)
-    loger.info(f"Транзакции за текущий месяц получены {date[:-12]}")
+    loger.info(f"Транзакции за {date[:-12]} получены")
     # Общая сумма операций и кэшбэк по картам
     total_spent_df = get_total_spending(df_current_month)
 
@@ -199,7 +199,7 @@ def events(date: str, period_type: str = "M") -> str:
     """Главная функция для страницы events.
     Args:
         date (str): строка с датой
-        range(str): Диапазон данных. По умолчанию диапазон равен одному месяцу
+        period_type(str): Диапазон данных. По умолчанию диапазон равен одному месяцу
                     (с начала месяца, на который выпадает дата, по саму дату).
                     Возможные значения этого параметра:
                     W — неделя, на которую приходится дата;
