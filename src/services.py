@@ -2,10 +2,12 @@ import locale
 import logging
 import os.path
 import re
+from datetime import datetime
 from logging import DEBUG, Formatter, getLogger
 from typing import Any, Dict, List
 
 import pandas as pd
+from pandas import DataFrame
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
@@ -95,3 +97,32 @@ def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) 
             if remainder != 0:
                 savings += limit - remainder
     return round(savings, 2)
+
+@save_to_file()
+def profitable_cashback(data: DataFrame, year: str | int, month: str | int,) -> str | None:
+    """
+    Функция для вычисления наиболее выгодной категории кэшбека в месяце
+
+    Args:
+        data - DataFrame с транзакциями
+        year - Номер выбранного года
+        month - Номер выбранного месяца
+
+    Returns:
+        JSON со списком категорий с кэшбеком за выбранный месяц
+        """
+
+    try:
+        date = datetime(int(year), int(month), 1)
+        string_date = date.strftime('%Y-%m')
+    except ValueError:
+        return "Ошибка: введены некорректные числовые значения для года и месяца."
+
+    df = data.copy()
+    df['Дата операции'] = pd.to_datetime(df['Дата операции'], errors='coerce', dayfirst=True)
+    df = df[df['Дата операции'].dt.strftime('%Y-%m') == string_date]
+    if df.empty:
+        return "Нет данных за этот период."
+    grouped = df.groupby('Категория')['Кэшбэк'].sum().sort_values(ascending=False)
+    result = grouped.to_json(orient="index", force_ascii=False, indent=2)
+    return result
