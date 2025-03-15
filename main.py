@@ -8,7 +8,7 @@ import src.services
 import src.views
 from config import ROOT_PATH
 from src.reports import get_report_by_category
-from src.services import find_money_transfers_from_individuals, investment_bank
+from src.services import find_money_transfers_from_individuals, investment_bank, profitable_cashback
 from src.utils import get_data, get_date
 from src.views import events, views
 
@@ -59,31 +59,35 @@ def handle_web_pages(option: str) -> None:
     """Обрабатывает раздел 'Веб-страницы'."""
     match option:
         case "1":
-         optional_date = get_date()
-         print(views(optional_date))
-        case "1":
-         while True:
-            period = (
-                input(
-                    "Введите период:\n"
-                    "W — неделя,\nM — месяц,\nY — год,\nALL — все данные до даты\n"
-                    "q — выход из раздела\n"
-                )
-                .strip()
-                .lower()
-            )
-            if period == "q":
-                print('Выход из раздела "События".')
-                return
             optional_date = get_date()
-            print(events(optional_date, period))
+            print(views(optional_date))
+        case "1":
+            while True:
+                period = (
+                    input(
+                        "Введите период:\n"
+                        "W — неделя,\nM — месяц,\nY — год,\nALL — все данные до даты\n"
+                        "q — выход из раздела\n"
+                    )
+                    .strip()
+                    .lower()
+                )
+                if period == "q":
+                    print('Выход из раздела "События".')
+                    return
+                optional_date = get_date()
+                print(events(optional_date, period))
 
 
 def handle_services(option: str) -> Any:
     """Обрабатывает раздел 'Сервисы'."""
     match option:
         case "1":
-            print("Функция пока не реализована.")
+            data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
+            data = get_data(data_path)
+            year = input('Введите номер года: ').strip()
+            month = input('Введите номер месяца: ').strip()
+            print(profitable_cashback(data, year, month))
         case "2":
             transactions = df.to_dict("records")
             optional_date = get_date()
@@ -100,6 +104,7 @@ def handle_services(option: str) -> Any:
         case "4":
             print("Функция пока не реализована.")
         case "5":
+            data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
             # result = (find_money_transfers_from_individuals(data_path))
             # money_transfers = json.loads(result)
             # for transfer in money_transfers:
@@ -136,6 +141,7 @@ def handle_reports(option: str) -> None:
             print("Функция пока не реализована.")
         case "3":
             print("Функция пока не реализована.")
+
 
 while True:
     first_level = menu(
