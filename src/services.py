@@ -50,7 +50,7 @@ def find_money_transfers_from_individuals(data_path: str) -> Any:
     try:
         full_data_path = os.path.join(ROOT_PATH, data_path)
         df = get_data(full_data_path)
-        loger.info(f"Данные из файла {full_data_path} загружены")
+        loger.info(f"Успешная загрузка из файла {full_data_path} ")
     except FileNotFoundError as e:
         loger.error(f"Ошибка доступа к файлу с данными: {e}")
         raise FileNotFoundError("Файл с данными не найден")
@@ -98,8 +98,13 @@ def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) 
                 savings += limit - remainder
     return round(savings, 2)
 
+
 @save_to_file()
-def profitable_cashback(data: DataFrame, year: str | int, month: str | int,) -> str | None:
+def profitable_cashback(
+    data: DataFrame,
+    year: str | int,
+    month: str | int,
+) -> str | None:
     """
     Функция для вычисления наиболее выгодной категории кэшбека в месяце
 
@@ -110,19 +115,23 @@ def profitable_cashback(data: DataFrame, year: str | int, month: str | int,) -> 
 
     Returns:
         JSON со списком категорий с кэшбеком за выбранный месяц
-        """
+    """
 
     try:
         date = datetime(int(year), int(month), 1)
-        string_date = date.strftime('%Y-%m')
+        string_date = date.strftime("%Y-%m")
+        loger.info(f"Используются данные за {string_date} ")
     except ValueError:
+        loger.error("Передана некорректная дата")
         return "Ошибка: введены некорректные числовые значения для года и месяца."
 
     df = data.copy()
-    df['Дата операции'] = pd.to_datetime(df['Дата операции'], errors='coerce', dayfirst=True)
-    df = df[df['Дата операции'].dt.strftime('%Y-%m') == string_date]
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
+    df = df[df["Дата операции"].dt.strftime("%Y-%m") == string_date]
     if df.empty:
+        loger.warning("Нет данных за этот период.")
         return "Нет данных за этот период."
-    grouped = df.groupby('Категория')['Кэшбэк'].sum().sort_values(ascending=False)
+    grouped = df.groupby("Категория")["Кэшбэк"].sum().sort_values(ascending=False)
     result = grouped.to_json(orient="index", force_ascii=False, indent=2)
+    loger.info("Ответ сформирован")
     return result
