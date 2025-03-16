@@ -85,8 +85,8 @@ def handle_services(option: str) -> Any:
         case "1":
             data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
             data = get_data(data_path)
-            year = input('Введите номер года: ').strip()
-            month = input('Введите номер месяца: ').strip()
+            year = input("Введите номер года: ").strip()
+            month = input("Введите номер месяца: ").strip()
             print(profitable_cashback(data, year, month))
         case "2":
             transactions = df.to_dict("records")
