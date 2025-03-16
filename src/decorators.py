@@ -52,7 +52,7 @@ def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callab
                     f.write(str(result))
                 return result
 
-            except Exception as e:
+            except Exception:
                 raise
 
         return wrapper
