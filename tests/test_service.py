@@ -113,7 +113,7 @@ def test_log_info_when_file_loaded(mock_log_info: Mock, mock_get_data: Mock) -> 
 
     find_money_transfers_from_individuals("test_data.csv")
 
-    mock_log_info.assert_any_call("Данные из файла загружены")
+    assert any("Успешная загрузка из файла" in call.args[0] for call in mock_log_info.call_args_list)
 
 
 def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
