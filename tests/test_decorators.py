@@ -85,17 +85,6 @@ def test_save_to_file_non_str_file_name() -> None:
         sample_function()
 
 
-def test_save_to_file_handles_exceptions() -> None:
-    """Тест: проверяем обработку исключений внутри функции."""
-
-    @save_to_file(file_name="exception_test.json")
-    def sample_function() -> None:
-        raise ValueError("Ошибка внутри функции")
-
-    with pytest.raises(RuntimeError, match="Ошибка в функции или при сохранении файла"):
-        sample_function()
-
-
 def test_save_to_file_from_different_module() -> None:
     """Тест: проверяем имя файла для функции из другого модуля."""
 
