@@ -53,7 +53,7 @@ def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callab
                 return result
 
             except Exception as e:
-                raise RuntimeError(f"Ошибка в функции или при сохранении файла: {e}")
+                raise
 
         return wrapper
 
