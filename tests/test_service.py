@@ -11,6 +11,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 
 from config import ROOT_PATH
+from src.services import profitable_cashback
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -128,3 +129,31 @@ def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
 
             reload(services)
         assert "Ошибка доступа к файлу логов" in caplog.text
+
+
+def test_profitable_cashback_sucsess() -> None:
+    """Успешный тест с корректными данными"""
+    mock_df = pd.DataFrame(
+        {
+            "Дата операции": ["22.08.2018 22:59:48", "22.12.2021 01:01:01", "04.12.2021 07:15:48"],
+            "Категория": ["Дом и ремонт", "Супермаркеты", "Фастфуд"],
+            "Кэшбэк": [5, 15, 10],
+        }
+    )
+    result = profitable_cashback(mock_df, 2021, 12)
+    expected_result = '{\n  "Супермаркеты":15,\n  "Фастфуд":10\n}'
+
+    assert result == expected_result, f"Expected:\n{expected_result}\n but got:\n{result}"
+
+
+def test_profitable_cashback_incorrect_month(caplog: LogCaptureFixture) -> None:
+    """Тест логирования ошибки при некорректном месяце"""
+    mock_df = pd.DataFrame({"Дата операции": ["04.12.2021 07:15:48"]})
+
+    with caplog.at_level(logging.ERROR):
+        profitable_cashback(mock_df, 2021, 15)
+
+    log_messages = [record.message for record in caplog.records]
+
+    assert "Передана некорректная дата" in log_messages, "Ожидаемая ошибка не была залогирована"
+    caplog.clear()
