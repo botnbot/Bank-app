@@ -60,7 +60,7 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
     try:
         full_data_path = os.path.join(ROOT_PATH, data_path)
         df = get_data(full_data_path)
-        loger.info("Данные из файла загружены")
+        loger.info(f"Данные из файла {full_data_path} загружены")
     except FileNotFoundError as e:
         loger.error(f"Ошибка доступа к файлу с данными: {e}")
         raise FileNotFoundError("Файл с данными не найден")
@@ -71,6 +71,7 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
     df = df.dropna(subset=["Дата операции временная"])
     df = df[(df["Дата операции временная"] >= old_date) & (df["Дата операции временная"] <= date)]
     df = filter_dataframe(df, {"Категория": category})
+    loger.info(f"Данные отфильтрованы по дате с {old_date} по {date}")
     df = df.drop(columns=["Дата операции временная"])
 
     loger.info(f"Данные отфильтрованы по категории '{category}'")
@@ -78,25 +79,3 @@ def get_report_by_category(data_path: str, category: str, optional_date: Optiona
     result = filter_dataframe(df, filter_conditions)
     loger.info("Данные сформированы")
     return result.to_json(orient="records", force_ascii=False)
-
-
-# if __name__ == "__main__":
-#     result_json = get_report_by_category("data/operations.xlsx", "Супермаркеты", "2018-04-30 22:22:22")
-#     result_df = pd.read_json(result_json)
-#     print(result_df["Дата операции"])
-
-# while True:
-#     try:
-#         date = input(
-#             "Введите дату (YYYY-MM-DD HH:MM:SS) в диапазоне 2018-01-01 — 2021-12-31 "
-#             "или нажмите Enter для использования текущей даты: "
-#         ).strip()
-#         if not date:
-#             date = None
-#         data_path = os.path.join(ROOT_PATH, 'data', 'operations.xlsx')
-#         result_json = get_report_by_category(data_path, "Супермаркеты", date)
-#         result_df = pd.read_json(result_json)
-#         print(result_df)
-#         break
-#     except ValueError as e:
-#         print(f"Ошибка: {e}")

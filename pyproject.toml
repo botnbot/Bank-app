@@ -13,6 +13,8 @@ openpyxl = "^3.1.5"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
 freezegun = "^1.5.1"
+datetime = "^5.5"
+
 
 [tool.poetry.group.lint.dependencies]
 flake8 = "^7.1.1"
@@ -24,6 +26,8 @@ isort = "^5.13.2"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
+emoji = "^2.14.1"
+
 
 [build-system]
 requires = ["poetry-core"]

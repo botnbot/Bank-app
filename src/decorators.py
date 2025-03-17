@@ -1,5 +1,6 @@
 import os
 import time
+import json
 from functools import wraps
 from typing import Any, Callable
 
@@ -8,7 +9,7 @@ from config import ROOT_PATH
 
 def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
-    Декоратор, который записывает в файл результат, возвращаемый функцией.
+    Декоратор, который записывает в файл результат, возвращаемый функцией, в формате JSON.
     Имя файла состоит из имени модуля, где определена декорируемая функция, и времени создания файла.
     """
 
@@ -47,13 +48,13 @@ def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callab
                 os.makedirs(os.path.dirname(final_file_name), exist_ok=True)
                 result = func(*args, **kwargs)
 
-                # Запись результата в файл
+                # Запись результата в файл в формате JSON
                 with open(final_file_name, "w", encoding="utf-8") as f:
-                    f.write(str(result))
+                    json.dump(result, f, ensure_ascii=False)
                 return result
 
-            except Exception as e:
-                raise RuntimeError(f"Ошибка в функции или при сохранении файла: {e}")
+            except Exception:
+                raise
 
         return wrapper
 
