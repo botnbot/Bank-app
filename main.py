@@ -61,7 +61,7 @@ def handle_web_pages(option: str) -> None:
         case "1":
             optional_date = get_date()
             print(views(optional_date))
-        case "1":
+        case "2":
             while True:
                 period = (
                     input(
