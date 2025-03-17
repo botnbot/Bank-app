@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 from typing import Generator
@@ -14,30 +13,31 @@ from src.decorators import save_to_file
 def cleanup() -> Generator:
     """Очистка временных данных после каждого теста."""
     output_dir = os.path.join(ROOT_PATH, "data", "output")
-    yield
     if os.path.exists(output_dir):
-        shutil.rmtree(output_dir, ignore_errors=True)
+        try:
+            shutil.rmtree(output_dir)
+        except Exception as e:
+            print(f"Ошибка при удалении временных файлов теста: {e}")
+    yield
 
 
-def read_json(file_path: str) -> dict:
-    """Читает JSON-файл и возвращает его содержимое."""
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-@pytest.mark.parametrize("test_file", ["test_output.json"])
-def test_save_to_file_creates_file(test_file: str) -> None:
+def test_save_to_file_creates_file() -> None:
     """Тест: проверяем создание файла с заданным именем."""
+    test_file = "test_output.json"
 
     @save_to_file(file_name=test_file)
     def sample_function() -> dict:
-        return {'key': 'value'}
+        return {"key": "value"}
 
     result = sample_function()
-    expected_path = os.path.join(ROOT_PATH, test_file)
 
+    expected_path = os.path.join(ROOT_PATH, test_file)
     assert os.path.exists(expected_path), "Файл не был создан."
-    assert read_json(expected_path) == result, "Содержимое файла не совпадает с ожидаемым."
+
+    with open(expected_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert content == str(result), "Содержимое файла не совпадает с ожидаемым."
+    os.remove(expected_path)
 
 
 def test_save_to_file_generates_default_name() -> None:
@@ -47,19 +47,24 @@ def test_save_to_file_generates_default_name() -> None:
     def sample_function() -> str:
         return "default_name_test"
 
+    # Подменяем временную метку для предсказуемого результата
     with patch("time.strftime", return_value="20250101_120000"):
         result = sample_function()
 
+    # Имя файла должно основываться на имени модуля, где определена функция
     module_name = "test_decorators"
-    generated_file = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+    generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+    assert os.path.exists(generated_file_name), "Файл с именем по умолчанию не был создан."
 
-    assert os.path.exists(generated_file), "Файл с именем по умолчанию не был создан."
-    assert read_json(generated_file) == result, "Содержимое файла не совпадает с ожидаемым."
+    with open(generated_file_name, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert content == str(result), "Содержимое файла с именем по умолчанию не совпадает с ожидаемым."
+    os.remove(generated_file_name)
 
 
-@pytest.mark.parametrize("invalid_file_name", [os.path.join(ROOT_PATH, "")])
-def test_save_to_file_invalid_file_name(invalid_file_name: str) -> None:
+def test_save_to_file_invalid_file_name() -> None:
     """Тест: проверяем обработку некорректного пути файла."""
+    invalid_file_name = os.path.join(ROOT_PATH, "")
 
     @save_to_file(file_name=invalid_file_name)
     def sample_function() -> str:
@@ -69,11 +74,10 @@ def test_save_to_file_invalid_file_name(invalid_file_name: str) -> None:
         sample_function()
 
 
-@pytest.mark.parametrize("invalid_file_name", [12345])
-def test_save_to_file_non_str_file_name(invalid_file_name: int) -> None:
+def test_save_to_file_non_str_file_name() -> None:
     """Тест: проверяем обработку нестрокового имени файла."""
 
-    @save_to_file(file_name=invalid_file_name)
+    @save_to_file(file_name=12345)
     def sample_function() -> str:
         return "test_invalid_type"
 
@@ -88,11 +92,16 @@ def test_save_to_file_from_different_module() -> None:
     def external_function() -> str:
         return "external_module_test"
 
+    # Подменяем временную метку
     with patch("time.strftime", return_value="20250101_120000"):
         result = external_function()
 
+    # Имя файла должно быть связано с текущим модулем, где определена функция
     module_name = "test_decorators"
-    generated_file = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+    generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+    assert os.path.exists(generated_file_name), "Файл с именем функции из другого модуля не был создан."
 
-    assert os.path.exists(generated_file), "Файл с именем функции из другого модуля не был создан."
-    assert read_json(generated_file) == result, "Содержимое файла не совпадает с ожидаемым."
+    with open(generated_file_name, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert content == str(result), "Содержимое файла не совпадает с ожидаемым."
+    os.remove(generated_file_name)
