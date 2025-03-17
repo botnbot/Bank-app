@@ -50,7 +50,7 @@ def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
 
 
 with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
-    from src.events import events
+    from src.views import events
 
 
 @pytest.mark.parametrize(
@@ -64,8 +64,8 @@ def test_events_success(mock_events_env: Mock, expected_keys: list) -> None:
     Тест успешного выполнения функции events().
     """
     with (
-        patch("src.events.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
-        patch("src.events.convert_to_rub", return_value={"USD": 90, "EUR": 100}) as mock_convert_to_rub,
+        patch("src.views.get_stock_prices", return_value={"AAPL": 150}) as mock_get_stock_prices,
+        patch("src.views.convert_to_rub", return_value={"USD": 90, "EUR": 100}) as mock_convert_to_rub,
     ):
         result_json = events("2024-02-05 12:00:00", "W")
         result = json.loads(result_json)
@@ -88,10 +88,10 @@ def test_events_currency_exception() -> None:
     test_currency = ["USD", "EUR"]
 
     # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
-    with patch("src.events.get_exchange_rates", side_effect=Exception("API error")):
-        with patch("src.events.convert_to_rub", return_value={}):
+    with patch("src.views.get_exchange_rates", side_effect=Exception("API error")):
+        with patch("src.views.convert_to_rub", return_value={}):
             # Вызываем функцию
-            result_json = events(test_date, period_type="M")
+            result_json = events(test_date)
             result = json.loads(result_json)  # Преобразуем JSON в Python-объект
 
             # Проверяем, что список `currency_rates` содержит ошибки
@@ -99,8 +99,8 @@ def test_events_currency_exception() -> None:
             assert result["currency_rates"] == expected_rates
 
 
-@patch("src.events.get_stock_prices")
-@patch("src.events.get_exchange_rates")
+@patch("src.views.get_stock_prices")
+@patch("src.views.get_exchange_rates")
 def test_events_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
     """
     Тест продолжения работы функции после возникновения исключения
