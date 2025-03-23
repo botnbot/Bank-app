@@ -1,7 +1,7 @@
 import json
 import os
 import shutil
-from typing import Generator
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +19,7 @@ def cleanup() -> Generator:
         shutil.rmtree(output_dir, ignore_errors=True)
 
 
-def read_json(file_path: str) -> dict:
+def read_json(file_path: str) -> Any:
     """Читает JSON-файл и возвращает его содержимое."""
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -31,7 +31,7 @@ def test_save_to_file_creates_file(test_file: str) -> None:
 
     @save_to_file(file_name=test_file)
     def sample_function() -> dict:
-        return {'key': 'value'}
+        return {"key": "value"}
 
     result = sample_function()
     expected_path = os.path.join(ROOT_PATH, test_file)
