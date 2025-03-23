@@ -228,16 +228,14 @@ def events(date: str, period_type: str = "M") -> str:
 
     # Загрузка данных
     data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
-    df = get_data(data_path)
+    full_df = get_data(data_path)
     loger.info(f"Транзакции из файла {data_path} загружены")
-
-    df = get_df_for_current_period(date, df, period_type)
+    df = get_df_for_current_period(date, full_df, period_type)
     loger.info("Данные за период отфильтрованы")
-
-    df = df.copy()
+    # df = df.copy()
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
-    # Расходы
+    # Транзакции с расходами
     expenses = df[df["Сумма платежа"] < 0]
     # Общая сумма расходов
     total_expenses = round((expenses["Сумма платежа"]).sum())

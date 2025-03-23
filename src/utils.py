@@ -132,41 +132,42 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
         raise ValueError("Ошибка: передана некорректная дата! Запустите с корректными параметрами.")
     # Преобразуем столбец "Дата операции" в datetime
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
+    df = df.dropna(subset=["Дата операции"])
 
     # Извлекаем текущую неделю, месяц и год
     current_week = parsed_date.isocalendar().week
     current_month = parsed_date.month
     current_year = parsed_date.year
     # Получение операций за текущий период
-    if period_type == "W":
-
-        current_period_df = filter_dataframe(
-            df,
-            {
-                "Дата операции": lambda dates: (dates <= parsed_date)
-                & (dates.dt.year == current_year)
-                & (dates.dt.isocalendar().week == current_week)
-            },
-        )
-    elif period_type == "M":
-        current_period_df = filter_dataframe(
-            df,
-            {
-                "Дата операции": lambda dates: (dates <= parsed_date)
-                & (dates.dt.year == current_year)
-                & (dates.dt.month == current_month)
-            },
-        )
-    elif period_type == "Y":
-        current_period_df = filter_dataframe(
-            df,
-            {"Дата операции": lambda dates: (dates <= parsed_date) & (dates.dt.year == current_year)},
-        )
-    else:
-        current_period_df = filter_dataframe(
-            df,
-            {"Дата операции": lambda dates: (dates <= parsed_date)},
-        )
+    match period_type:
+        case "W":
+            current_period_df = filter_dataframe(
+                df,
+                {
+                    "Дата операции": lambda dates: (dates <= parsed_date)
+                    & (dates.dt.year == current_year)
+                    & (dates.dt.isocalendar().week == current_week)
+                },
+            )
+        case "Y":
+            current_period_df = filter_dataframe(
+                df,
+                {"Дата операции": lambda dates: (dates <= parsed_date) & (dates.dt.year == current_year)},
+            )
+        case "ALL":
+            current_period_df = filter_dataframe(
+                df,
+                {"Дата операции": lambda dates: (dates <= parsed_date)},
+            )
+        case _:
+            current_period_df = filter_dataframe(
+                df,
+                {
+                    "Дата операции": lambda dates: (dates <= parsed_date)
+                    & (dates.dt.year == current_year)
+                    & (dates.dt.month == current_month)
+                },
+            )
     if "Номер карты" in current_period_df.columns:
         current_period_df.loc[:, "Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
 

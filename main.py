@@ -67,12 +67,12 @@ def handle_web_pages(option: str) -> None:
                     input(
                         "Введите период:\n"
                         "W — неделя,\nM — месяц,\nY — год,\nALL — все данные до даты\n"
-                        "q — выход из раздела\n"
+                        "Q — выход из раздела\n"
                     )
                     .strip()
-                    .lower()
+                    .upper()
                 )
-                if period == "q":
+                if period == "Q":
                     print('Выход из раздела "События".')
                     return
                 optional_date = get_date()
@@ -105,7 +105,7 @@ def handle_services(option: str) -> Any:
             print("Функция пока не реализована.")
         case "5":
             data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
-            # result = (find_money_transfers_from_individuals(data_path))
+            # result = find_money_transfers_from_individuals(data_path)
             # money_transfers = json.loads(result)
             # for transfer in money_transfers:
             #     print(json.dumps(transfer, ensure_ascii=False, indent=2))
