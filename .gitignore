@@ -132,3 +132,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 /data/output/
+test_output.json
+/data/~$operations.xlsx
+/logs/log.txt
