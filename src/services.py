@@ -1,3 +1,4 @@
+import json
 import locale
 import logging
 import os.path
@@ -96,6 +97,7 @@ def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) 
             remainder = transaction["Сумма операции"] % limit
             if remainder != 0:
                 savings += limit - remainder
+    loger.info("Ответ сформирован")
     return round(savings, 2)
 
 
@@ -135,3 +137,31 @@ def profitable_cashback(
     result = grouped.to_json(orient="index", force_ascii=False, indent=2)
     loger.info("Ответ сформирован")
     return result
+
+
+def simple_search(to_find: str) -> str:
+    """
+    Ищет транзакции, содержащие указанную строку в колонках "Описание" или "Категория".
+
+    Args:
+        to_find (str): Строка для поиска.
+
+    Returns:
+        str: JSON-ответ с транзакциями, содержащими запрос.
+    """
+    # Загрузка данных
+    df = get_data()
+
+    result_df = df[
+        (df["Описание"].str.contains(to_find, case=False, na=False))
+        | (df["Категория"].str.contains(to_find, case=False, na=False))
+    ]
+
+    # Логирование
+    logging.info(f"Поиск выполнен по запросу: '{to_find}'")
+
+    # Обработка пустого результата
+    if result_df.empty:
+        return json.dumps({"Итог": "Ничего не найдено."}, ensure_ascii=False)
+    loger.info("Ответ сформирован")
+    return result_df.to_json(orient="records", force_ascii=False, indent=1)
