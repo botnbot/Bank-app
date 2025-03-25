@@ -8,7 +8,7 @@ import src.services
 import src.views
 from config import ROOT_PATH
 from src.reports import get_report_by_category
-from src.services import find_money_transfers_from_individuals, investment_bank, profitable_cashback
+from src.services import find_money_transfers_from_individuals, investment_bank, profitable_cashback, simple_search
 from src.utils import get_data, get_date
 from src.views import events, views
 
@@ -65,12 +65,12 @@ def handle_web_pages(option: str) -> None:
             while True:
                 period = (
                     input(
-                        "Введите период:\n"
-                        "W — неделя,\nM — месяц,\nY — год,\nALL — все данные до даты\n"
+                        "Введите период(по умолчанию - месяц):\n"
+                        "W — неделя,\nM — месяц(можно ничего не вводить),\nY — год,\nALL — все данные до даты\n"
                         "q — выход из раздела\n"
                     )
                     .strip()
-                    .lower()
+                    .upper()
                 )
                 if period == "q":
                     print('Выход из раздела "События".')
@@ -100,7 +100,9 @@ def handle_services(option: str) -> Any:
             print(f"Сумма для «Инвесткопилки»: {result}")
             return investment_bank(date, transactions, limit)
         case "3":
-            print("Функция пока не реализована.")
+            search = input("Введите строку для поиска: ")
+            print(simple_search(search))
+            return simple_search(search)
         case "4":
             print("Функция пока не реализована.")
         case "5":
