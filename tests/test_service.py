@@ -9,9 +9,10 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from _pytest.logging import LogCaptureFixture
+from pandas import DataFrame
 
 from config import ROOT_PATH
-from src.services import profitable_cashback
+from src.services import investment_bank, profitable_cashback, simple_search
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -157,3 +158,89 @@ def test_profitable_cashback_incorrect_month(caplog: LogCaptureFixture) -> None:
 
     assert "Передана некорректная дата" in log_messages, "Ожидаемая ошибка не была залогирована"
     caplog.clear()
+
+
+@pytest.fixture
+def sample_data() -> DataFrame:
+    return pd.DataFrame(
+        {
+            "Описание": ["Кофе Starbucks", "Оплата за интернет", "Покупка в Магните"],
+            "Категория": ["Еда", "Интернет", "Супермаркет"],
+            "Сумма": [300, 500, 1500],
+        }
+    )
+
+
+def test_successful_search(sample_data: Mock) -> None:
+    with patch("src.services.get_data", return_value=sample_data):
+        result = simple_search("кофе")
+        result_data = json.loads(result)
+        assert len(result_data) == 1
+        assert result_data[0]["Описание"] == "Кофе Starbucks"
+
+
+def test_empty_result(sample_data: Mock) -> None:
+    with patch("src.services.get_data", return_value=sample_data):
+        result = simple_search("несуществующий запрос")
+        assert json.loads(result) == {"Итог": "Ничего не найдено."}
+
+
+def test_case_insensitive(sample_data: Mock) -> None:
+    with patch("src.services.get_data", return_value=sample_data):
+        result_lower = simple_search("магнит")
+        result_upper = simple_search("МАГНИТ")
+        assert json.loads(result_lower) == json.loads(result_upper)
+
+
+def test_category_search(sample_data: Mock) -> None:
+    with patch("src.services.get_data", return_value=sample_data):
+        result = simple_search("еда")
+        result_data = json.loads(result)
+        assert result_data[0]["Категория"] == "Еда"
+
+
+def test_logging(sample_data: Mock, caplog: pytest.LogCaptureFixture) -> None:
+    with patch("src.services.get_data", return_value=sample_data):
+        with caplog.at_level(logging.INFO):
+            simple_search("тест")
+            assert "Поиск выполнен по запросу: 'тест'" in caplog.text
+
+
+@pytest.fixture
+def mock_transactions() -> list:
+    return [
+        {"Дата операции": "2018-01", "Сумма операции": 124},
+        {"Дата операции": "2018-04", "Сумма операции": 567},
+        {"Дата операции": "2019-01", "Сумма операции": 890},
+        {"Дата операции": "2018-04", "Сумма операции": 123},
+    ]
+
+
+@pytest.fixture
+def mock_transactions_with_mising_date() -> list:
+    return [
+        {"Дата операции": "NaT", "Сумма операции": 567},
+        {"Дата операции": "", "Сумма операции": 537},
+        {"Дата операции": "2019-01", "Сумма операции": 890},
+        {"Дата операции": "2018-04", "Сумма операции": 123},
+    ]
+
+
+def test_investment_bank_correct_data(mock_transactions: Mock) -> None:
+    """Успешный тест с корректными аргументами"""
+    result = investment_bank("2018-04", mock_transactions, 50)
+    expected_result = 60
+    assert result == expected_result
+
+
+def test_investment_bank_incorrect_date(mock_transactions: Mock) -> None:
+    """Тест передачи некорректной даты в качестве аргумента"""
+    with pytest.raises(ValueError):
+        investment_bank("2018-14", mock_transactions, 50)
+
+
+def test_investment_bank_missing_date_in_dataframe(mock_transactions_with_mising_date: Mock) -> None:
+    """Тест передачи DataFrame с пропущенными датами в качестве аргумента"""
+    result = investment_bank("2018-04", mock_transactions_with_mising_date, 50)
+    expected_result = 27
+    assert result == expected_result
