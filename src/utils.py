@@ -21,7 +21,7 @@ def greetings() -> str:
         return "Доброй ночи!"
 
 
-def get_data(path: str) -> pd.DataFrame:
+def get_data(path: str = r"C:\Projects\Bank_app\data\operations.xlsx") -> pd.DataFrame:
     """
     Функция принимает на вход путь к файлу .xlsx в виде строки и возвращает DataFrame с транзакциями
          Args:
@@ -172,3 +172,23 @@ def get_df_for_current_period(date: str, df: DataFrame, period_type: str = "M") 
         current_period_df.loc[:, "Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
 
     return current_period_df
+
+
+def extract_mobile_numbers(text: str) -> list[str]:
+    """
+    Извлекает из строки все подстроки, которые начинаются с +7 или 8,
+    содержат разделители (пробелы, скобки, дефисы) и, после удаления нецифровых символов,
+    имеют ровно 11 цифр.
+    """
+    # Ищем потенциальные кандидаты: начинаются с +7 или 8 и содержат цифры, пробелы, скобки, дефисы.
+    pattern = re.compile(r"(?:\+7|8)[\d\s()-]+")
+    candidates = pattern.findall(text)
+
+    valid_numbers = []
+    for cand in candidates:
+        # Удаляем все символы, не являющиеся цифрами.
+        digits = re.sub(r"\D", "", cand)
+        # Если после удаления остаётся ровно 11 цифр, то номер валиден.
+        if len(digits) == 11:
+            valid_numbers.append(cand.strip())
+    return valid_numbers

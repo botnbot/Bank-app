@@ -7,7 +7,7 @@ import pytest
 from freezegun import freeze_time
 from pandas import DataFrame
 
-from src.utils import filter_dataframe, get_data, get_date, greetings
+from src.utils import extract_mobile_numbers, filter_dataframe, get_data, get_date, greetings
 
 
 @pytest.mark.parametrize(
@@ -292,3 +292,24 @@ def test_get_date_invalid_retry(mock_input_function: Mock) -> None:
 
     result = get_date()
     assert result == "2021-12-31 23:59:59"
+
+
+@pytest.mark.parametrize(
+    "_input, output",
+    [
+        ("", []),  # Пустой ввод
+        ("812345689012", []),
+        ("+712345689012", []),
+        ("+71234568901", ["+71234568901"]),
+        ("+7(123)4568901", ["+7(123)4568901"]),
+        ("Текст 8(123)4568901", ["8(123)4568901"]),
+        ("Текст +7(123)4568901", ["+7(123)4568901"]),
+        ("Текст +7(123)456-89-01", ["+7(123)456-89-01"]),
+        ("Текст +7(123)456-89-01", ["+7(123)456-89-01"]),
+        ("Текст +7 123 456 89 01", ["+7 123 456 89 01"]),
+        ("Текст 8 123 456 89 01", ["8 123 456 89 01"]),
+    ],
+)
+def test_extract_mobile_numbers(_input: str, output: str) -> None:
+    result = extract_mobile_numbers(_input)
+    assert output == result
