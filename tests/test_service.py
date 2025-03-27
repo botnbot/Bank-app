@@ -12,7 +12,7 @@ from _pytest.logging import LogCaptureFixture
 from pandas import DataFrame
 
 from config import ROOT_PATH
-from src.services import investment_bank, profitable_cashback, simple_search
+from src.services import investment_bank, mobile_phone_search, profitable_cashback, simple_search
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -147,6 +147,21 @@ def test_profitable_cashback_sucsess() -> None:
     assert result == expected_result, f"Expected:\n{expected_result}\n but got:\n{result}"
 
 
+def test_profitable_cashback_no_data(caplog: pytest.LogCaptureFixture) -> None:
+    """Неуспешный тест(нет данных за период)"""
+    mock_df = pd.DataFrame(
+        {
+            "Дата операции": ["22.08.2018 22:59:48", "22.12.2021 01:01:01", "04.12.2021 07:15:48"],
+            "Категория": ["Дом и ремонт", "Супермаркеты", "Фастфуд"],
+            "Кэшбэк": [5, 15, 10],
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        result = profitable_cashback(mock_df, 2017, 12)
+    assert result == "Нет данных за этот период."
+    assert "Нет данных за этот период." in caplog.text
+
+
 def test_profitable_cashback_incorrect_month(caplog: LogCaptureFixture) -> None:
     """Тест логирования ошибки при некорректном месяце"""
     mock_df = pd.DataFrame({"Дата операции": ["04.12.2021 07:15:48"]})
@@ -244,3 +259,59 @@ def test_investment_bank_missing_date_in_dataframe(mock_transactions_with_mising
     result = investment_bank("2018-04", mock_transactions_with_mising_date, 50)
     expected_result = 27
     assert result == expected_result
+
+
+@pytest.fixture
+def sample_df_with_phones() -> DataFrame:
+    return pd.DataFrame(
+        {
+            "Описание": ["текст +71234568901", "ТЕКСТ 8 123 456 89 01", "+712345689012"],
+            "Категория": ["Еда", "Интернет", "Супермаркет"],
+            "Сумма": [300, 500, 1500],
+        }
+    )
+
+
+def test_mobile_phone_search_success(sample_df_with_phones: DataFrame) -> None:
+    with patch("src.services.get_data", return_value=sample_df_with_phones):
+        result_json = mobile_phone_search()
+
+        try:
+            result = json.loads(result_json)
+            expected_result = [
+                {"Описание": "текст +71234568901", "Категория": "Еда", "Сумма": 300},
+                {"Описание": "ТЕКСТ 8 123 456 89 01", "Категория": "Интернет", "Сумма": 500},
+            ]
+
+            assert isinstance(result, list), "Результат должен быть списком словарей"
+            assert sorted(result, key=lambda x: str(x["Описание"])) == sorted(
+                expected_result, key=lambda x: str(x["Описание"])
+            )
+
+        except json.JSONDecodeError:
+            assert result_json == json.dumps(
+                {"message": "Не найдено транзакций с мобильными номерами."}, ensure_ascii=False
+            )
+
+
+@pytest.fixture
+def sample_df_without_phones() -> DataFrame:
+    return pd.DataFrame(
+        {
+            "Описание": ["текст ", "ТЕКСТ", "+712345689012"],
+            "Категория": ["Еда", "Интернет", "Супермаркет"],
+            "Сумма": [300, 500, 1500],
+        }
+    )
+
+
+def test_mobile_phone_search_unsuccessful(
+    sample_df_without_phones: DataFrame, caplog: pytest.LogCaptureFixture
+) -> None:
+    with patch("src.services.get_data", return_value=sample_df_without_phones):
+        with caplog.at_level(logging.WARNING):
+            result_json = mobile_phone_search()
+    result = json.loads(result_json)
+
+    assert result == {"message": "Не найдено транзакций с мобильными номерами."}
+    assert "Не найдено транзакций с мобильными номерами." in caplog.text
