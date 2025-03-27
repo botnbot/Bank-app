@@ -12,7 +12,7 @@ from pandas import DataFrame
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
-from src.utils import filter_dataframe, get_data
+from src.utils import extract_mobile_numbers, filter_dataframe, get_data
 
 loger = getLogger("services")
 formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
@@ -139,6 +139,7 @@ def profitable_cashback(
     return result
 
 
+@save_to_file()
 def simple_search(to_find: str) -> str:
     """
     Ищет транзакции, содержащие указанную строку в колонках "Описание" или "Категория".
@@ -157,11 +158,28 @@ def simple_search(to_find: str) -> str:
         | (df["Категория"].str.contains(to_find, case=False, na=False))
     ]
 
-    # Логирование
+
     logging.info(f"Поиск выполнен по запросу: '{to_find}'")
 
-    # Обработка пустого результата
     if result_df.empty:
+        loger.info("Ничего не найдено.")
         return json.dumps({"Итог": "Ничего не найдено."}, ensure_ascii=False)
     loger.info("Ответ сформирован")
     return result_df.to_json(orient="records", force_ascii=False, indent=1)
+
+
+@save_to_file()
+def mobile_phone_search() -> str:
+    """Функция возвращает JSON со всеми транзакциями, содержащими в описании мобильные номера."""
+    df = get_data()
+    # Фильтруем строки, оставляя те, где хотя бы один валидный номер найден в описании
+    mask = df["Описание"].apply(lambda txt: bool(extract_mobile_numbers(txt)))
+    result_df = df[mask]
+
+    if result_df.empty:
+        loger.warning("Не найдено транзакций с мобильными номерами.")
+        return json.dumps({"message": "Не найдено транзакций с мобильными номерами."})
+
+    result = result_df.to_json(orient="records", force_ascii=False, indent=2)
+    loger.info("Ответ сформирован")
+    return result
