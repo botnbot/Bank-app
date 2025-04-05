@@ -59,6 +59,9 @@ def find_money_transfers_from_individuals(data_path: str) -> Any:
     pattern = re.compile(r"^\s*[A-ZА-ЯЁ]{1}[a-zа-яё]+\s+[A-ZА-ЯЁ]{1}\.\s*$")
     filter_conditions = {"Категория": "Переводы", "Описание": pattern}
     result = filter_dataframe(df, filter_conditions, "AND")
+    if result.empty:
+        print("Переводов не было")
+        loger.info("Переводов не было")
     loger.info("Ответ по переводам физлицам сформирован")
     return result.to_json(orient="records", force_ascii=False)
 
@@ -157,7 +160,6 @@ def simple_search(to_find: str) -> str:
         (df["Описание"].str.contains(to_find, case=False, na=False))
         | (df["Категория"].str.contains(to_find, case=False, na=False))
     ]
-
 
     logging.info(f"Поиск выполнен по запросу: '{to_find}'")
 
