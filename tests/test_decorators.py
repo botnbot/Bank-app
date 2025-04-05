@@ -106,3 +106,4 @@ def test_save_to_file_from_different_module() -> None:
         content = json.load(f)
         assert content == result, "Содержимое файла не совпадает с ожидаемым."
     os.remove(generated_file_name)
+
