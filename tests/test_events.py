@@ -18,7 +18,6 @@ def disable_logging() -> Generator:
 @pytest.fixture
 def mock_events_env() -> Generator:
     mock_settings = json.dumps({"user_stocks": ["AAPL"], "user_currencies": ["USD", "EUR"]})
-
     with (
         patch("builtins.open", mock_open(read_data=mock_settings)),
         patch("pandas.read_excel") as mock_read_excel,
