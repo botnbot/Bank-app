@@ -1,6 +1,7 @@
+import json
 import os
 import shutil
-from typing import Generator
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +22,12 @@ def cleanup() -> Generator:
     yield
 
 
+def read_json(file_path: str) -> Any:
+    """Читает JSON-файл и возвращает его содержимое."""
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def test_save_to_file_creates_file() -> None:
     """Тест: проверяем создание файла с заданным именем."""
     test_file = "test_output.json"
@@ -30,13 +37,10 @@ def test_save_to_file_creates_file() -> None:
         return {"key": "value"}
 
     result = sample_function()
-
     expected_path = os.path.join(ROOT_PATH, test_file)
-    assert os.path.exists(expected_path), "Файл не был создан."
 
-    with open(expected_path, "r", encoding="utf-8") as f:
-        content = f.read()
-        assert content == str(result), "Содержимое файла не совпадает с ожидаемым."
+    assert os.path.exists(expected_path), "Файл не был создан."
+    assert read_json(expected_path) == result, "Содержимое файла не совпадает с ожидаемым."
     os.remove(expected_path)
 
 
@@ -47,18 +51,17 @@ def test_save_to_file_generates_default_name() -> None:
     def sample_function() -> str:
         return "default_name_test"
 
-    # Подменяем временную метку для предсказуемого результата
     with patch("time.strftime", return_value="20250101_120000"):
         result = sample_function()
 
-    # Имя файла должно основываться на имени модуля, где определена функция
     module_name = "test_decorators"
     generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
+
     assert os.path.exists(generated_file_name), "Файл с именем по умолчанию не был создан."
 
     with open(generated_file_name, "r", encoding="utf-8") as f:
-        content = f.read()
-        assert content == str(result), "Содержимое файла с именем по умолчанию не совпадает с ожидаемым."
+        content = json.load(f)
+        assert content == result, "Содержимое файла с именем по умолчанию не совпадает с ожидаемым."
     os.remove(generated_file_name)
 
 
@@ -92,16 +95,15 @@ def test_save_to_file_from_different_module() -> None:
     def external_function() -> str:
         return "external_module_test"
 
-    # Подменяем временную метку
     with patch("time.strftime", return_value="20250101_120000"):
         result = external_function()
 
-    # Имя файла должно быть связано с текущим модулем, где определена функция
     module_name = "test_decorators"
     generated_file_name = os.path.join(ROOT_PATH, "data", "output", f"{module_name}_20250101_120000.json")
-    assert os.path.exists(generated_file_name), "Файл с именем функции из другого модуля не был создан."
 
+    assert os.path.exists(generated_file_name), "Файл с именем функции из другого модуля не был создан."
     with open(generated_file_name, "r", encoding="utf-8") as f:
-        content = f.read()
-        assert content == str(result), "Содержимое файла не совпадает с ожидаемым."
+        content = json.load(f)
+        assert content == result, "Содержимое файла не совпадает с ожидаемым."
     os.remove(generated_file_name)
+

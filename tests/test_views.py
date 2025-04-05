@@ -5,7 +5,6 @@ from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
-from _pytest.logging import LogCaptureFixture
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -135,15 +134,17 @@ def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_st
     assert "error" not in result  # Если функция возвращает ошибки в JSON, проверяем их отсутствие
 
 
-def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
-    with patch("os.makedirs"), patch("logging.FileHandler", side_effect=PermissionError("No permission")):
-        from src.views import loger
+@patch("src.views.loger.warning")
+@patch("src.views.loger.error")
+def test_views_logging_errors(mock_log_error: Mock, mock_log_warning: Mock) -> None:
+    """Тест проверки логирования ошибок и предупреждений."""
+    with (
+        patch("src.views.get_exchange_rates", side_effect=Exception("Ошибка получения курса валют")),
+        patch("src.views.get_stock_prices", side_effect=Exception("Ошибка получения курса акций")),
+    ):
+        views("2024-02-05 12:00:00")
 
-        loger.handlers.clear()
-        with caplog.at_level(logging.ERROR, logger="views"):
-            from importlib import reload
-
-            from src import views
-
-            reload(views)
-        assert "Ошибка доступа к файлу логов" in caplog.text
+    mock_log_warning.assert_any_call("Ошибка при получении курсов валют: Ошибка получения курса валют")
+    mock_log_error.assert_any_call(
+        "Неизвестная ошибка при получении курсов акций: Exception('Ошибка получения курса акций')"
+    )
