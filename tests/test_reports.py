@@ -1,16 +1,14 @@
-import json
 import logging
-import os
 from datetime import datetime
 from typing import Any, Callable, Generator
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pandas as pd
 import pytest
 from _pytest.logging import LogCaptureFixture
 from freezegun import freeze_time
-
-from config import ROOT_PATH
+from pandas._testing import assert_frame_equal
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -28,7 +26,7 @@ def mock_data() -> pd.DataFrame:
         {
             "Дата операции": ["01.11.2021 12:00:00", "15.10.2021 18:00:00", "01.01.2021 12:00:00"],
             "Категория": ["Супермаркеты", "Транспорт", "Супермаркеты"],
-            "Сумма": [1000, 500, 200],
+            "Сумма операции": [-1000, -500, -200],
         }
     )
 
@@ -36,7 +34,9 @@ def mock_data() -> pd.DataFrame:
 @pytest.fixture
 def mock_filtered_data() -> pd.DataFrame:
     """Возвращает тестовый DataFrame после фильтрации"""
-    return pd.DataFrame({"Дата операции": ["01.11.2021 12:00:00"], "Категория": ["Супермаркеты"], "Сумма": [1000]})
+    return pd.DataFrame(
+        {"Дата операции": ["01.11.2021 12:00:00"], "Категория": ["Супермаркеты"], "Сумма операции": [1000]}
+    )
 
 
 def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
@@ -49,81 +49,28 @@ def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
 
 
 with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
-    from src.reports import get_report_by_category
+    from src.reports import expenses_by_days_of_the_week, get_report_by_category
 
 
-@patch("src.utils.filter_dataframe")
-@patch("src.reports.get_data")
-@patch("os.path.exists", return_value=True)
-def test_get_report_by_category_with_date(
-    mock_exists: Mock,
-    mock_get_data: Mock,
-    mock_filter_dataframe: Mock,
-    mock_data: pd.DataFrame,
-    mock_filtered_data: pd.DataFrame,
-) -> None:
+def test_get_report_by_category_with_date(mock_data: pd.DataFrame) -> None:
     """Проверяем, что функция корректно работает с переданной датой и аргументами"""
-
-    mock_get_data.return_value = mock_data
-    mock_filter_dataframe.return_value = mock_filtered_data
-    expected_path = os.path.join(ROOT_PATH, "test_data.csv")
-
-    result = get_report_by_category("test_data.csv", "Супермаркеты", "2021-12-31 23:59:59")
-
-    expected_result = json.dumps(
-        [{"Дата операции": "01.11.2021 12:00:00", "Категория": "Супермаркеты", "Сумма": 1000}],
-        ensure_ascii=False,
-    )
-
-    assert json.loads(result) == json.loads(expected_result)
-    mock_get_data.assert_called_once_with(expected_path)
+    df = mock_data
+    result = get_report_by_category(df, "Супермаркеты", "2021-12-31 23:59:59")
+    expected_result = [{"Дата операции": "01.11.2021 12:00:00", "Категория": "Супермаркеты", "Сумма операции": -1000}]
+    assert result == expected_result
 
 
-@patch("src.utils.filter_dataframe")
-@patch("src.reports.get_data")
-@patch("os.path.exists", return_value=True)
-@freeze_time("2021-12-31 23:59:59")
-def test_get_report_by_category_without_date(
-    mock_exists: Mock,
-    mock_get_data: Mock,
-    mock_filter_dataframe: Mock,
-    mock_data: pd.DataFrame,
-    mock_filtered_data: pd.DataFrame,
-) -> None:
-    """Проверяем, что при отсутствии даты используется текущая дата"""
-
-    mock_get_data.return_value = mock_data
-    mock_filter_dataframe.return_value = mock_filtered_data
-    expected_path = os.path.join(ROOT_PATH, "test_data.csv")
-
-    result = get_report_by_category("test_data.csv", "Супермаркеты")
-
-    expected_result = json.dumps(
-        [{"Дата операции": "01.11.2021 12:00:00", "Категория": "Супермаркеты", "Сумма": 1000}],
-        ensure_ascii=False,
-    )
-
-    assert json.loads(result) == json.loads(expected_result)
-    mock_get_data.assert_called_once_with(expected_path)
+def test_get_report_by_category_incorrect_date(mock_data: pd.DataFrame) -> None:
+    """Проверяем, что при передаче некорректной даты вызывается исключение"""
+    with pytest.raises(
+        ValueError, match="Ошибка: передана некорректная дата! Используйте формат 'ГГГГ-ММ-ДД ЧЧ:ММ:СС'"
+    ):
+        get_report_by_category(mock_data, "Супермаркеты", "")
 
 
-def test_get_report_by_category_invalid_date() -> None:
-    """Тест некорректной даты"""
-    invalid_date = "2023/10/05 12:34:56"
-    with pytest.raises(ValueError) as e:
-        get_report_by_category("test_data.csv", "Супермаркеты", invalid_date)
-    assert str(e.value) == ("Некорректный формат даты, используйте 'YYYY-MM-DD HH:MM:SS'")
-
-
-@patch("os.path.exists", return_value=True)
 @patch("src.utils.get_date")
-@patch("src.reports.get_data")
 @freeze_time("2021-12-31 23:59:59")
-def test_get_report_by_category_filters_by_date(
-    mock_get_data: Mock,
-    mock_get_date: Mock,
-    mock_exists: Mock,
-) -> None:
+def test_get_report_by_category_filters_by_date(mock_get_date: Mock) -> None:
     """Проверяем, что старые даты не попадают в отчет"""
 
     mock_get_date.return_value = "2021-12-31 23:59:59"
@@ -137,25 +84,14 @@ def test_get_report_by_category_filters_by_date(
         columns=["Дата операции", "Категория", "Сумма"],
     )
 
-    mock_get_data.return_value = mock_data
-
-    result = get_report_by_category("test_data.csv", "Супермаркеты")
-    parsed_result = json.loads(result)
+    df = mock_data
+    result = get_report_by_category(df, "Супермаркеты")
+    parsed_result = result
 
     assert all(
         datetime.strptime(entry["Дата операции"], "%d.%m.%Y %H:%M:%S") >= datetime(2021, 10, 1, 0, 0, 0)
         for entry in parsed_result
     )
-
-
-@patch("src.reports.get_data", side_effect=FileNotFoundError("Файл с данными не найден"))
-@patch("src.reports.loger.error")
-def test_log_error_when_file_not_found(mock_log_error: Mock, mock_get_data: Mock) -> None:
-    """Тестирует логирование ошибки, когда файл не найден."""
-
-    with pytest.raises(FileNotFoundError, match="Файл с данными не найден"):
-        get_report_by_category("test_data.csv", "JYH")
-    mock_log_error.assert_called_with("Ошибка доступа к файлу с данными: Файл с данными не найден")
 
 
 def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
@@ -170,3 +106,31 @@ def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
 
             reload(reports)
         assert "Ошибка доступа к файлу логов" in caplog.text
+
+
+def test_expenses_by_days_of_the_week_succes(mock_data: pd.DataFrame) -> None:
+    """Проверяем, что функция корректно работает с переданной датой и аргументами"""
+    df = mock_data
+    result = expenses_by_days_of_the_week(df, "2021-12-31 23:59:59")
+    expected_result = pd.DataFrame(
+        [
+            {"День недели": "Monday", "Средние траты": 1000.0},
+            {"День недели": "Tuesday", "Средние траты": np.nan},
+            {"День недели": "Wednesday", "Средние траты": np.nan},
+            {"День недели": "Thursday", "Средние траты": np.nan},
+            {"День недели": "Friday", "Средние траты": 500.0},
+            {"День недели": "Saturday", "Средние траты": np.nan},
+            {"День недели": "Sunday", "Средние траты": np.nan},
+        ]
+    )
+    result_df = pd.DataFrame(result)
+    assert_frame_equal(result_df, expected_result, check_names=True)
+
+
+def test_expenses_by_days_of_the_week_no_expenses(mock_data: pd.DataFrame) -> None:
+    """
+    Проверяем работу при отсутствии трат за период
+    """
+    mock_df = mock_data
+    with pytest.raises(ValueError, match="Нет данных о расходах за указанный период"):
+        expenses_by_days_of_the_week(mock_df, "2022-02-12 23:59:59")
