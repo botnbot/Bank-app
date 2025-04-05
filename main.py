@@ -1,4 +1,4 @@
-import json
+# import json
 import os
 from datetime import datetime
 from typing import Any
@@ -7,24 +7,14 @@ import src.reports
 import src.services
 import src.views
 from config import ROOT_PATH
-from src.reports import get_report_by_category
-from src.services import (
-    find_money_transfers_from_individuals,
-    investment_bank,
-    mobile_phone_search,
-    profitable_cashback,
-    simple_search,
-)
+from src.reports import expenses_by_days_of_the_week, get_report_by_category
+from src.services import (find_money_transfers_from_individuals, investment_bank, mobile_phone_search,
+                          profitable_cashback, simple_search)
 from src.utils import get_data, get_date
 from src.views import events, views
 
-# Загрузка данных
-data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
-df = get_data(data_path)
-exp_category_list = ["Супермаркеты", "Различные товары", "Переводы", "Каршеринг", "Дом и ремонт", "Фастфуд", "Аптеки"]
-
 categories = {
-    "v": (
+    "w": (
         "Веб-страницы",
         {
             "1": "Главная",
@@ -66,8 +56,9 @@ def handle_web_pages(option: str) -> Any:
     match option:
         case "1":
             optional_date = get_date()
-            print(views(optional_date))
-            return views(optional_date)
+            result = views(optional_date)
+            # print(result)
+            return result
         case "2":
             while True:
                 period = (
@@ -79,12 +70,14 @@ def handle_web_pages(option: str) -> Any:
                     .strip()
                     .upper()
                 )
+                print(f"Вы выбрали период {period}")
                 if period == "q":
                     print('Выход из раздела "События".')
                     return
                 optional_date = get_date()
-                print(events(optional_date, period))
-                return events(optional_date, period)
+                result = events(optional_date, period)
+                # print(result)
+                return result
 
 
 def handle_services(option: str) -> Any:
@@ -95,9 +88,11 @@ def handle_services(option: str) -> Any:
             data = get_data(data_path)
             year = input("Введите номер года: ").strip()
             month = input("Введите номер месяца: ").strip()
-            print(profitable_cashback(data, year, month))
-            return profitable_cashback(data, year, month)
+            result = profitable_cashback(data, year, month)
+            # print(result)
+            return result
         case "2":
+            df = get_data()
             transactions = df.to_dict("records")
             optional_date = get_date()
             date_ = datetime.strptime(optional_date, "%Y-%m-%d %H:%M:%S")
@@ -106,59 +101,69 @@ def handle_services(option: str) -> Any:
             while limit not in range(10, 101):
                 limit = float(input("Введите предел округления в диапазоне от 10 до 100  "))
             result = investment_bank(date, transactions, limit)
-            print(f"Сумма для «Инвесткопилки»: {result}")
-            return investment_bank(date, transactions, limit)
+            # print(f"Сумма для «Инвесткопилки»: {result}")
+            return result
         case "3":
             search = input("Введите строку для поиска: ")
-            print(simple_search(search))
-            return simple_search(search)
+            result = simple_search(search)
+            # print(result)
+            return result
         case "4":
-            print(mobile_phone_search())
-            return mobile_phone_search()
+            result = mobile_phone_search()
+            # print(result)
+            return result
         case "5":
             data_path = os.path.join(ROOT_PATH, "data/operations.xlsx")
             result = find_money_transfers_from_individuals(data_path)
-            money_transfers = json.loads(result)
-            for transfer in money_transfers:
-                print(json.dumps(transfer, ensure_ascii=False, indent=2))
-            return find_money_transfers_from_individuals(data_path)
+            # money_transfers = json.loads(result)
+            # print(json.dumps(money_transfers, ensure_ascii=False, indent=2))
+            return result
 
 
-def handle_reports(option: str) -> None:
+def handle_reports(option: str) -> Any:
     """Обрабатывает раздел 'Отчеты'."""
     match option:
         case "1":
+            exp_category_list = [
+                "Супермаркеты",
+                "Различные товары",
+                "Переводы",
+                "Каршеринг",
+                "Дом и ремонт",
+                "Фастфуд",
+                "Аптеки",
+            ]
+
             while True:
                 category = input(
                     "Введите категорию трат из списка:\n"
                     + "\n".join(exp_category_list)
                     + "\nq - Завершение программы\n"
                 ).strip()
-
                 if category.lower() == "q":
                     print("Программа завершена.")
                     return
-
-                if category in exp_category_list:
-                    optional_date = get_date()
-                    result = get_report_by_category(data_path, category, optional_date)
-
-                    expenses = json.loads(result)
-                    print("\nСписок транзакций:\n")
-                    for expense in expenses:
-                        print(json.dumps(expense, ensure_ascii=False, indent=2))
-                    break
+                elif category in exp_category_list:
+                    transactions = get_data()
+                    date = get_date()
+                    result = get_report_by_category(transactions, category, date)
+                    # print(json.dumps(result, indent=4, ensure_ascii=False))
+                    return result
                 print("Некорректная категория. Попробуйте снова.")
         case "2":
-            print("Функция пока не реализована.")
+            date = get_date()
+            transactions = get_data()
+            result = expenses_by_days_of_the_week(transactions, date)
+            # print(json.dumps(result, ensure_ascii=False, indent=1))
+            return result
         case "3":
             print("Функция пока не реализована.")
 
 
 while True:
     first_level = menu(
-        "Выберите категорию:\n" "v - Веб-страницы\n" "s - Сервисы\n" "r - Отчеты\n" "q - Завершение программы\n",
-        {"v", "s", "r", "q"},
+        "Выберите категорию:\n" "w - Веб-страницы\n" "s - Сервисы\n" "r - Отчеты\n" "q - Завершение программы\n",
+        {"w", "s", "r", "q"},
     )
 
     if first_level == "q":
@@ -183,7 +188,7 @@ while True:
 
     try:
         match first_level:
-            case "v":
+            case "w":
                 handle_web_pages(second_level)
             case "s":
                 handle_services(second_level)
@@ -193,7 +198,7 @@ while True:
     except ValueError as e:
         error_message = f"Ошибка {e} в разделе '{subcategories[second_level]}'"
         match first_level:
-            case "v":
+            case "w":
                 src.views.loger.error(error_message)
             case "s":
                 src.services.loger.error(error_message)
