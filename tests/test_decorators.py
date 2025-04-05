@@ -33,12 +33,15 @@ def test_save_to_file_creates_file(test_file: str) -> None:
     def sample_function() -> dict:
         return {"key": "value"}
 
-    result = sample_function()
     expected_path = os.path.join(ROOT_PATH, test_file)
 
-    assert os.path.exists(expected_path), "Файл не был создан."
-    assert read_json(expected_path) == result, "Содержимое файла не совпадает с ожидаемым."
-
+    try:
+        result = sample_function()
+        assert os.path.exists(expected_path), "Файл не был создан."
+        assert read_json(expected_path) == result, "Содержимое файла не совпадает с ожидаемым."
+    finally:
+        if os.path.exists(expected_path):
+            os.remove(expected_path)
 
 def test_save_to_file_generates_default_name() -> None:
     """Тест: проверяем генерацию имени файла по умолчанию."""
