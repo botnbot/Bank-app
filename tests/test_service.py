@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from collections.abc import Callable
-from typing import Any, Generator
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -13,14 +13,6 @@ from pandas import DataFrame
 
 from config import ROOT_PATH
 from src.services import investment_bank, mobile_phone_search, profitable_cashback, simple_search
-
-
-@pytest.fixture(scope="function", autouse=True)
-def disable_logging() -> Generator:
-    """Отключает логирование на время тестов."""
-    logging.disable(logging.CRITICAL)
-    yield
-    logging.disable(logging.NOTSET)
 
 
 # мокаем декоратор
