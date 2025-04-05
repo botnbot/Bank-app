@@ -17,22 +17,26 @@ loger.setLevel(DEBUG)
 
 formatter = Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
-consolehandler = logging.StreamHandler()
-consolehandler.setFormatter(formatter)
-consolehandler.setLevel(DEBUG)
 
-logpath = os.path.join(ROOT_PATH, "logs")
-os.makedirs(logpath, exist_ok=True)
-logfile = os.path.join(ROOT_PATH, "logs", "log.txt")
-try:
-    filehandler = logging.FileHandler(logfile, mode="a")
-    filehandler.setLevel(WARNING)
-    filehandler.setFormatter(formatter)
-    if not loger.handlers:
-        loger.addHandler(consolehandler)
+if not getattr(loger, "LOG_INITIALIZED", False):  # Проверяем наличие атрибута
+    setattr(loger, "LOG_INITIALIZED", True)  # Устанавливаем атрибут
+
+    consolehandler = logging.StreamHandler()
+    consolehandler.setFormatter(formatter)
+    consolehandler.setLevel(DEBUG)
+    loger.addHandler(consolehandler)
+
+    logpath = os.path.join(ROOT_PATH, "logs")
+    os.makedirs(logpath, exist_ok=True)
+    logfile = os.path.join(logpath, "log.txt")
+
+    try:
+        filehandler = logging.FileHandler(logfile, mode="a")
+        filehandler.setLevel(WARNING)
+        filehandler.setFormatter(formatter)
         loger.addHandler(filehandler)
-except PermissionError as e:
-    loger.error(f"Ошибка доступа к файлу логов: {e}")
+    except PermissionError:
+        loger.error("Ошибка доступа к файлу логов")
 
 
 def sum_by_category(df: DataFrame) -> DataFrame:
@@ -232,7 +236,7 @@ def events(date: str, period_type: str = "M") -> str:
     loger.info(f"Транзакции из файла {data_path} загружены")
     df = get_df_for_current_period(date, full_df, period_type)
     loger.info("Данные за период отфильтрованы")
-    # df = df.copy()
+    df = df.copy()
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], errors="coerce", dayfirst=True)
 
     # Транзакции с расходами
@@ -279,8 +283,8 @@ def events(date: str, period_type: str = "M") -> str:
         columns={"Сумма платежа": "amount", "Категория": "category"}
     )
     transfers_and_cash["amount"] = (
-        transfers_and_cash["amount"].round().apply(lambda x: f"{x:g}")
-    )  # Округление и отбрасывание ,0
+        transfers_and_cash["amount"].round().apply(lambda x: f"{x:g}")  # Округление и отбрасывание ,0
+    )
     loger.info("Данные проанализированы")
 
     # Получение курсов акций
