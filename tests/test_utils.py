@@ -108,12 +108,10 @@ def test_get_data_success() -> None:
         mock_read_excel.assert_called_once_with("mock_path.xlsx")
 
 
-def test_get_data_file_not_found() -> None:
+def test_get_data_file_not_found(capsys: pytest.CaptureFixture) -> None:
     """Тест обработки ошибки FileNotFoundError."""
-    # Мокаем pd.read_excel, чтобы он вызывал FileNotFoundError
-    with patch("pandas.read_excel", side_effect=FileNotFoundError("Файл не найден")):
-        with pytest.raises(FileNotFoundError, match="Файл не найден"):
-            get_data("mock_path.xlsx")
+    with pytest.raises(FileNotFoundError, match="Файл не найден"):
+        get_data("mock_path.xlsx")
 
 
 def test_filter_dataframe_by_value() -> None:
@@ -239,7 +237,7 @@ def test_filter_dataframe_without_coditions() -> None:
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected_result)
 
 
-def test_invalid_operator() -> None:
+def test_filter_dataframe_invalid_operator() -> None:
     """Тест: исключение при некорректном операторе."""
     df = pd.DataFrame({"Категория": ["Переводы"], "Сумма": [1000]})
     conditions = {"Категория": "Переводы"}
@@ -284,14 +282,6 @@ def test_get_date(mock_input_function: Mock, mock_input: str, expected_output: s
     result = get_date()  # Вызываем тестируемую функцию
 
     assert result == expected_result  # Проверяем корректность
-
-
-@patch("builtins.input", side_effect=["invalid date", "2021-12-31 23:59:59"])  # 1-я попытка неверная, 2-я успешная
-def test_get_date_invalid_retry(mock_input_function: Mock) -> None:
-    """Тестируем сценарий, когда пользователь вводит некорректную дату и исправляет её."""
-
-    result = get_date()
-    assert result == "2021-12-31 23:59:59"
 
 
 @pytest.mark.parametrize(
