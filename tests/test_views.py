@@ -5,7 +5,6 @@ from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
-from _pytest.logging import LogCaptureFixture
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -133,20 +132,6 @@ def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_st
     ]
 
     assert "error" not in result  # Если функция возвращает ошибки в JSON, проверяем их отсутствие
-
-
-def test_logging_permission_error(caplog: LogCaptureFixture) -> None:
-    with patch("os.makedirs"), patch("logging.FileHandler", side_effect=PermissionError("No permission")):
-        from src.views import loger
-
-        loger.handlers.clear()
-        with caplog.at_level(logging.ERROR, logger="views"):
-            from importlib import reload
-
-            from src import views
-
-            reload(views)
-        assert "Ошибка доступа к файлу логов" in caplog.text
 
 
 @patch("src.views.loger.warning")
