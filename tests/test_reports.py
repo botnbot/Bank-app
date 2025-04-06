@@ -49,7 +49,7 @@ def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
 
 
 with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) as mock_decorator:
-    from src.reports import expenses_by_days_of_the_week, get_report_by_category
+    from src.reports import expenses_by_days_of_the_week, get_report_by_category, expenses_by_working_day
 
 
 def test_get_report_by_category_with_date(mock_data: pd.DataFrame) -> None:
@@ -128,6 +128,23 @@ def test_expenses_by_days_of_the_week_succes(mock_data: pd.DataFrame) -> None:
 
 
 def test_expenses_by_days_of_the_week_no_expenses(mock_data: pd.DataFrame) -> None:
+    """
+    Проверяем работу при отсутствии трат за период
+    """
+    mock_df = mock_data
+    with pytest.raises(ValueError, match="Нет данных о расходах за указанный период"):
+        expenses_by_days_of_the_week(mock_df, "2022-02-12 23:59:59")
+
+
+def test_expenses_by_working_day_succes(mock_data: pd.DataFrame) -> None:
+    """Проверяем, что функция корректно работает с переданной датой и аргументами"""
+    df = mock_data
+    result = expenses_by_working_day(df, "2021-12-31 23:59:59")
+    expected_result = [{"Рабочие дни": 750, "Выходные": 0}]
+    assert result == expected_result
+
+
+def test_expenses_by_working_day_no_expenses(mock_data: pd.DataFrame) -> None:
     """
     Проверяем работу при отсутствии трат за период
     """

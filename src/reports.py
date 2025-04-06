@@ -5,7 +5,7 @@ from logging import DEBUG, Formatter, getLogger
 from typing import Any, Optional
 
 import pandas as pd
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame
 
 from config import ROOT_PATH
 from src.decorators import save_to_file
@@ -37,13 +37,13 @@ if not loger.handlers:
 
 
 @save_to_file()
-def get_report_by_category(df: DataFrame, category: str, date: Optional[Timestamp] = None) -> Any:
+def get_report_by_category(df: DataFrame, category: str, date: Optional[str] = None) -> Any:
     """
         Функция возвращает траты по заданной категории за последние 3 месяца (от переданной даты).
 
     Args:
         df: DataFrame с транзакциями
-        date: Дата, от которой рассчитывается период (формат 'DD.MM.YYYY')
+        date: Дата, от которой рассчитывается период ('YYYY-DD-MM HH:MM:SS')
         category (str): Название категории расходов для фильтрации
 
     Returns:
@@ -67,7 +67,7 @@ def expenses_by_days_of_the_week(df: pd.DataFrame, date: Optional[str] = None) -
 
     Args:
         df: DataFrame с транзакциями
-        date: Дата, от которой рассчитывается период (формат 'DD.MM.YYYY')
+        date: Дата, от которой рассчитывается период ('YYYY-DD-MM HH:MM:SS')
 
     Returns:
         Список словарей с днями недели и средними тратами
@@ -105,3 +105,40 @@ def expenses_by_days_of_the_week(df: pd.DataFrame, date: Optional[str] = None) -
 
     loger.info("Успешно сгруппированы траты по дням недели")
     return result
+
+
+@save_to_file()
+def expenses_by_working_day(df: pd.DataFrame, date: Optional[str] = None) -> list[dict]:
+    """Функция выводит средние траты в рабочие и в выходные дни за последние 3 месяца (от указанной даты).
+
+    Args:
+        df: DataFrame с транзакциями
+        date: Дата, от которой рассчитывается период (формат 'YYYY-MM-DD HH:MM:SS').
+
+    Returns:
+        Список словарей с днями недели и средними тратами
+    """
+
+    result = expenses_by_days_of_the_week(df, date)
+
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    weekends = ["Saturday", "Sunday"]
+
+    # Собираем траты по дням, игнорируя None и NaN
+    weekday_expenses = [
+        item["Средние траты"]
+        for item in result
+        if item["День недели"] in weekdays and pd.notna(item["Средние траты"])
+    ]
+    weekend_expenses = [
+        item["Средние траты"]
+        for item in result
+        if item["День недели"] in weekends and pd.notna(item["Средние траты"])
+    ]
+
+    # Без деления на 0
+    average_weekday_expense = round(sum(weekday_expenses) / len(weekday_expenses), 2) if weekday_expenses else 0
+    average_weekend_expense = round(sum(weekend_expenses) / len(weekend_expenses), 2) if weekend_expenses else 0
+
+    loger.info("Успешно сформированы средние траты по выходным/рабочим дням недели")
+    return [{"Рабочие дни": average_weekday_expense, "Выходные": average_weekend_expense}]

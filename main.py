@@ -1,4 +1,4 @@
-# import json
+import json
 import os
 from datetime import datetime
 from typing import Any
@@ -7,7 +7,7 @@ import src.reports
 import src.services
 import src.views
 from config import ROOT_PATH
-from src.reports import expenses_by_days_of_the_week, get_report_by_category
+from src.reports import expenses_by_days_of_the_week, expenses_by_working_day, get_report_by_category
 from src.services import (find_money_transfers_from_individuals, investment_bank, mobile_phone_search,
                           profitable_cashback, simple_search)
 from src.utils import get_data, get_date
@@ -157,7 +157,9 @@ def handle_reports(option: str) -> Any:
             # print(json.dumps(result, ensure_ascii=False, indent=1))
             return result
         case "3":
-            print("Функция пока не реализована.")
+            result = expenses_by_working_day(get_data(), get_date())
+            print(json.dumps(result, ensure_ascii=False, indent=1))
+            return result
 
 
 while True:
