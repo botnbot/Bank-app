@@ -158,7 +158,7 @@ def handle_reports(option: str) -> Any:
             return result
         case "3":
             result = expenses_by_working_day(get_data(), get_date())
-            print(json.dumps(result, ensure_ascii=False, indent=1))
+            # print(json.dumps(result, ensure_ascii=False, indent=1))
             return result
 
 

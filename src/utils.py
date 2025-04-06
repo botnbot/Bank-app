@@ -159,7 +159,7 @@ def get_df_for_current_period(date: str, df: Optional[pd.DataFrame], period_type
     current_period_df = df[period_filters[period_type](df["Дата операции"])]
 
     if "Номер карты" in current_period_df.columns:
-        current_period_df["Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
+        current_period_df.loc[:, "Номер карты"] = current_period_df["Номер карты"].astype(str).str[-4:]
 
     return current_period_df
 
