@@ -57,7 +57,7 @@ def handle_web_pages(option: str) -> Any:
         case "1":
             optional_date = get_date()
             result = views(optional_date)
-            # print(result)
+            print(result)
             return result
         case "2":
             while True:
@@ -76,7 +76,7 @@ def handle_web_pages(option: str) -> Any:
                     return
                 optional_date = get_date()
                 result = events(optional_date, period)
-                # print(result)
+                print(result)
                 return result
 
 

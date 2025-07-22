@@ -21,7 +21,7 @@ def mock_views_env() -> Generator:
 
     with (
         patch("builtins.open", mock_open(read_data=mock_settings)),
-        patch("pandas.read_excel") as mock_read_excel,
+        patch("src.views.pd.read_excel") as mock_read_excel,
         patch("requests.get") as mock_requests_get,
     ):
         # Подготовка данных
@@ -29,6 +29,7 @@ def mock_views_env() -> Generator:
             {
                 "Дата операции": ["2024-02-01 10:00:00", "2024-02-05 10:30:00"],
                 "Сумма операции с округлением": [10, 999],
+                "Сумма операции": [10, 999],
                 "Кэшбэк": [6, None],
                 "Категория": ["Продукты", "Зарплата"],
                 "Номер карты": ["12588", "987654"],
@@ -61,7 +62,7 @@ with patch("src.decorators.save_to_file", Mock(side_effect=mock_save_to_file)) a
         (["greeting", "cards", "currency_rates", "stock_prices", "top_transactions"]),
     ],
 )
-def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
+def test_views_success(mock_views_env: None, expected_keys: list) -> None:
     """
     Тест успешного выполнения функции views().
     """
@@ -84,26 +85,44 @@ def test_views_sucess(mock_views_env: Mock, expected_keys: list) -> None:
         assert all(key in result for key in expected_keys)
 
 
+@pytest.mark.usefixtures("disable_logging")
 def test_views_currency_exception() -> None:
     """Тест обработки исключения при получении курсов валют."""
     test_date = "2025-01-01 22:22:22"
     test_currency = ["USD", "EUR"]
+    mock_settings = json.dumps({"user_stocks": [], "user_currencies": test_currency})
 
-    # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
-    with patch("src.views.get_exchange_rates", side_effect=Exception("API error")):
-        with patch("src.views.convert_to_rub", return_value={}):
-            # Вызываем функцию
-            result_json = views(test_date)
-            result = json.loads(result_json)  # Преобразуем JSON в Python-объект
+    # Мокаем нужный DataFrame
+    mock_df = pd.DataFrame(
+        {
 
-            # Проверяем, что список `currency_rates` содержит ошибки
-            expected_rates = [{"currency": cur, "rate": "API error"} for cur in test_currency]
-            assert result["currency_rates"] == expected_rates
+            "Дата операции": ["2025-01-01 10:00:00", "2025-01-01 10:30:00"],
+            "Сумма операции с округлением": [10, 999],
+            "Сумма операции": [10, 999],
+            "Кэшбэк": [6, None],
+            "Категория": ["Продукты", "Зарплата"],
+            "Номер карты": ["12588", "987654"],
+            "Описание": ["Ozon.ru", "Магнит"],
+        }
+    )
+    mock_df["Дата операции"] = pd.to_datetime(mock_df["Дата операции"])
+
+    with (
+        patch("src.views.open", mock_open(read_data=mock_settings)),
+        patch("src.views.get_exchange_rates", side_effect=Exception("API error")),
+        patch("src.views.convert_to_rub", return_value={}),
+        patch("src.views.pd.read_excel", return_value=mock_df),
+    ):
+        result_json = views(test_date)
+        result = json.loads(result_json)
+
+        expected_rates = [{"currency": cur, "rate": "API error"} for cur in test_currency]
+        assert result["currency_rates"] == expected_rates
 
 
 @patch("src.views.get_stock_prices")
 @patch("src.views.get_exchange_rates")
-def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock) -> None:
+def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_stock_prices: Mock, mock_views_env: None) -> None:
     """
     Тест продолжения работы функции после возникновения исключения
     """
@@ -136,7 +155,7 @@ def test_views_continues_after_errors(mock_get_exchange_rates: Mock, mock_get_st
 
 @patch("src.views.loger.warning")
 @patch("src.views.loger.error")
-def test_views_logging_errors(mock_log_error: Mock, mock_log_warning: Mock) -> None:
+def test_views_logging_errors(mock_log_error: Mock, mock_log_warning: Mock, mock_views_env: None) -> None:
     """Тест проверки логирования ошибок и предупреждений."""
     with (
         patch("src.views.get_exchange_rates", side_effect=Exception("Ошибка получения курса валют")),

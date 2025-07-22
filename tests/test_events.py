@@ -38,7 +38,6 @@ def mock_events_env() -> Generator:
     mock_requests_get.return_value.json.return_value = {"success": True}  # API должен возвращать данные
 
 
-# мокаем декоратор
 def mock_save_to_file(*args: Any, **kwargs: Any) -> Callable:
     """Mock-декоратор для подмены @save_to_file"""
 
@@ -89,7 +88,6 @@ def test_events_currency_exception() -> None:
     # Подменяем `get_exchange_rates`, чтобы он всегда вызывал исключение
     with patch("src.views.get_exchange_rates", side_effect=Exception("API error")):
         with patch("src.views.convert_to_rub", return_value={}):
-            # Вызываем функцию
             result_json = events(test_date)
             result = json.loads(result_json)
 

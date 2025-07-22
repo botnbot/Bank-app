@@ -49,35 +49,41 @@ def sum_by_category(df: DataFrame) -> DataFrame:
     """
 
     result: DataFrame = (
-        df.groupby("Категория", dropna=True)["Сумма операции с округлением"]
+        df.groupby("Категория", dropna=True)["Сумма операции"]
         .sum()
-        .reset_index()  # Преобразуем Series в DataFrame
+        .reset_index()
+        .query("`Сумма операции` < 0")  # оставляем только расходы
     )
+    result["Сумма операции"] = result["Сумма операции"].abs()  # делаем суммы положительными
+
     return result
 
 
-def get_total_spending(df: DataFrame) -> Any:
+def get_total_spend(df: DataFrame) -> Any:
     """
     Функция осуществляет группировку сумм всех трат по каждой карте
     Args:
         df (DataFrame): Исходный DataFrame с транзакциями.
     Returns:
-        DataFrame (DataFrame): DataFrame с суммами всех транзакций и суммами кэшбека по каждой карте."""
-    result = df.groupby("Номер карты", as_index=False, dropna=True)[["Сумма операции с округлением", "Кэшбэк"]].sum()
-    return result
+        DataFrame (DataFrame): DataFrame с суммами всех транзакций и суммами кэшбека по каждой карте.
+    """
+
+    if df.empty or not {"Номер карты", "Сумма операции с округлением", "Кэшбэк"}.issubset(df.columns):
+        return pd.DataFrame(columns=["Номер карты", "Сумма операции с округлением", "Кэшбэк"])
+    return df.groupby("Номер карты", as_index=False, dropna=True)[["Сумма операции с округлением", "Кэшбэк"]].sum()
 
 
 def get_top_5(df: DataFrame) -> DataFrame:
     """
-    Функция возвращает Топ-5 по сумме транзакции
+    Функция возвращает Топ-5 по сумме платежа
     Args:
         df: исходный DataFrame с транзакциями
     Returns:
         отфильтрованный DataFrame, содержащий топ-5 транзакций
     """
-    df_top_five = df.sort_values(by="Сумма операции с округлением", ascending=False, inplace=False)
+    df_top_five = df.sort_values(by="Сумма операции", ascending=False, inplace=False)
 
-    return df_top_five[["Дата операции", "Сумма операции с округлением", "Категория", "Описание"]].head(5)
+    return df_top_five[["Дата операции", "Сумма операции", "Категория", "Описание"]].head(5)
 
 
 @save_to_file()
@@ -104,16 +110,29 @@ def views(date: str) -> str:
 
     # Получение операций за текущий месяц
     df_current_month = get_df_for_current_period(date, df)
+    df_current_month = df_current_month[
+        df_current_month["Номер карты"].apply(lambda x: pd.notna(x) and str(x).strip() != "")
+    ]
+    loger.info("Удалены транзакции с отсутствующим номером карты")
     loger.info(f"Транзакции за {date[:-12]} отфильтрованы")
     # Общая сумма операций и кэшбэк по картам
-    total_spent_df = get_total_spending(df_current_month)
+    total_spent_df = get_total_spend(df_current_month)
 
     # Преобразуем список словарей в DataFrame
     if isinstance(total_spent_df, list):
         total_spent_df = pd.DataFrame(total_spent_df)
 
-    total_spent_df["last_digits"] = total_spent_df["Номер карты"].astype(str).str[-4:]
-    cards = total_spent_df.rename(columns={"Сумма операции с округлением": "total_spent", "Кэшбэк": "cashback"})[
+    def extract_last_digits(card_number):
+        if pd.isna(card_number):
+            return "неизвестно"
+        card_str = str(card_number).strip()
+        if card_str.isdigit() and len(card_str) >= 4:
+            return card_str[-4:]
+        return "неизвестно"
+
+    total_spent_df["last_digits"] = total_spent_df["Номер карты"].apply(extract_last_digits)
+
+    cards = total_spent_df.rename(columns={'Сумма операции с округлением': "total_spent", "Кэшбэк": "cashback"})[
         ["last_digits", "total_spent", "cashback"]
     ].to_dict(orient="records")
     loger.info("Данные по картам обработаны")
@@ -134,7 +153,7 @@ def views(date: str) -> str:
     top_transactions = top_five.rename(
         columns={
             "Дата операции": "date",
-            "Сумма операции с округлением": "amount",
+            "Сумма операции": "amount",
             "Категория": "category",
             "Описание": "description",
         }

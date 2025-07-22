@@ -48,7 +48,6 @@ def save_to_file(file_name: Any = None) -> Callable[[Callable[..., Any]], Callab
                 os.makedirs(os.path.dirname(final_file_name), exist_ok=True)
                 result = func(*args, **kwargs)
 
-                # Запись результата в файл в формате JSON
                 with open(final_file_name, "w", encoding="utf-8") as f:
                     json.dump(result, f, ensure_ascii=False)
                 return result
